@@ -55,3 +55,28 @@ Thumbs.db
 journal/
 data/
 .claude/
+
+# Testing & coverage
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+.tox/
+
+# MyPy / type checkers
+.mypy_cache/
+.dmypy.json
+
+# AWS & deployment
+.aws/
+*.pem
+*.key
+
+# Docker
+docker-compose.override.yml
+
+# Temporary files
+*.tmp
+*.bak
+*.orig
+Thumbs.db

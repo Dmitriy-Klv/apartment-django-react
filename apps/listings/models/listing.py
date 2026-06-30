@@ -20,11 +20,15 @@ class Listing(models.Model):
     description = models.TextField()
     city = models.CharField(max_length=100)
     district = models.CharField(max_length=100, blank=True)
+    postal_code = models.CharField(max_length=10, blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     rooms = models.PositiveIntegerField()
     property_type = models.CharField(max_length=20, choices=PropertyType.choices)
     is_active = models.BooleanField(default=True)
+    is_deleted = models.BooleanField(default=False)
     views_count = models.PositiveIntegerField(default=0)
+    average_rating = models.DecimalField(max_digits=3, decimal_places=2, default=0)
+    reviews_count = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -33,4 +37,5 @@ class Listing(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
+        """Return listing title."""
         return self.title

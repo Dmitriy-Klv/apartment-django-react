@@ -1,3 +1,4 @@
+import os
 from datetime import timedelta
 from pathlib import Path
 
@@ -7,7 +8,8 @@ env = environ.Env()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-environ.Env.read_env(BASE_DIR / '.env.dev')
+_env_file = '.env.test' if os.environ.get('ENV_FILE') == 'test' else '.env.dev'
+environ.Env.read_env(BASE_DIR / _env_file)
 
 SECRET_KEY = env('SECRET_KEY')
 

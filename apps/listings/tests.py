@@ -1,3 +1,4 @@
+import os
 from decimal import Decimal
 
 import pytest
@@ -17,7 +18,7 @@ def listing_payload():
         'description': 'Beautiful 2-room apartment in city center.',
         'city': 'Berlin',
         'district': 'Mitte',
-        'postal_code': '10115',
+        'postal_code': os.getenv('TEST_LISTING_POSTAL_CODE', '00000'),
         'price': '1200.00',
         'rooms': 2,
         'property_type': PropertyType.APARTMENT,

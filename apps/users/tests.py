@@ -1,3 +1,5 @@
+import os
+
 import pytest
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -21,8 +23,8 @@ def api_client():
 def tenant_payload():
     """Return valid payload for tenant registration."""
     return {
-        'email': 'tenant@test.com',
-        'password': 'StrongPass123',
+        'email': os.getenv('TEST_TENANT_EMAIL'),
+        'password': os.getenv('TEST_USER_PASSWORD'),
         'first_name': 'John',
         'last_name': 'Doe',
         'role': UserRole.TENANT,
@@ -33,8 +35,8 @@ def tenant_payload():
 def lessor_payload():
     """Return valid payload for lessor registration."""
     return {
-        'email': 'lessor@test.com',
-        'password': 'StrongPass123',
+        'email': os.getenv('TEST_LESSOR_EMAIL'),
+        'password': os.getenv('TEST_USER_PASSWORD'),
         'first_name': 'Jane',
         'last_name': 'Smith',
         'role': UserRole.LESSOR,
@@ -151,7 +153,7 @@ class TestLogin:
     def test_login_nonexistent_email_returns_401(self, api_client):
         """Non-existent email must return 401."""
         response = api_client.post(LOGIN_URL, {
-            'email': 'nobody@test.com',
+            'email': os.getenv('TEST_NONEXISTENT_EMAIL'),
             'password': 'SomePass123',
         })
         assert response.status_code == status.HTTP_401_UNAUTHORIZED

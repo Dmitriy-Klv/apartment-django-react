@@ -4,6 +4,8 @@ from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.history.services.search_history import SearchHistoryService
+from apps.history.services.view_history import ViewHistoryService
 from apps.listings.filters.listing import ListingFilter
 from apps.listings.models import Listing
 from apps.listings.serializers.listing import ListingCreateSerializer, ListingSerializer
@@ -43,6 +45,14 @@ class ListingListCreateView(generics.ListCreateAPIView):
             return [IsLessor()]
         return [AllowAny()]
 
+    def list(self, request, *args, **kwargs):
+        """List listings and save search keyword to history for authenticated users."""
+        response = super().list(request, *args, **kwargs)
+        keyword = request.query_params.get('search', '').strip()
+        if keyword and request.user.is_authenticated:
+            SearchHistoryService.record_search(user=request.user, keyword=keyword)
+        return response
+
     def create(self, request, *args, **kwargs):
         """Create a new listing owned by the authenticated lessor."""
         serializer = ListingCreateSerializer(data=request.data)
@@ -72,6 +82,14 @@ class ListingDetailView(generics.RetrieveUpdateDestroyAPIView):
         if self.request.method in ('PUT', 'PATCH', 'DELETE'):
             return [IsAuthenticated(), IsLessor(), IsListingOwner()]
         return [AllowAny()]
+
+    def retrieve(self, request, *args, **kwargs):
+        """Return listing details and record the view in history."""
+        listing = self.get_object()
+        user = request.user if request.user.is_authenticated else None
+        ViewHistoryService.record_view(listing=listing, user=user)
+        serializer = self.get_serializer(listing)
+        return Response(serializer.data)
 
     def update(self, request, *args, **kwargs):
         """Update listing fields via the service layer."""

@@ -2,6 +2,7 @@ import os
 from datetime import date, timedelta
 
 import pytest
+from django.db import IntegrityError, transaction
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.test import APIClient
@@ -288,6 +289,27 @@ class TestBookingStatusUpdate:
         lessor, _ = lessor_client
         response = lessor.patch(f'{BOOKINGS_URL}{booking_id}/status/', {'status': BookingStatus.CHECKED_IN})
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+@pytest.mark.django_db
+class TestBookingDateConstraint:
+
+    def test_end_date_before_start_date_raises_integrity_error(self, tenant_client, listing):
+        """Database must reject a booking where end_date is not after start_date, even outside the API."""
+        _, tenant = tenant_client
+        start = date.today() + timedelta(days=5)
+        with pytest.raises(IntegrityError):
+            with transaction.atomic():
+                Booking.objects.create(listing=listing, tenant=tenant, start_date=start, end_date=start)
+
+    def test_end_date_after_start_date_is_allowed(self, tenant_client, listing):
+        """Database must accept a booking where end_date is strictly after start_date."""
+        _, tenant = tenant_client
+        start = date.today() + timedelta(days=5)
+        booking = Booking.objects.create(
+            listing=listing, tenant=tenant, start_date=start, end_date=start + timedelta(days=1),
+        )
+        assert booking.pk is not None
 
 
 @pytest.mark.django_db

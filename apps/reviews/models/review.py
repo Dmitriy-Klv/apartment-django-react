@@ -28,7 +28,6 @@ class Review(models.Model):
     class Meta:
         db_table = 'reviews_review'
         ordering = ['-created_at']
-        unique_together = ('listing', 'author')
 
     def __str__(self):
         return f'{self.author} → {self.listing} ({self.rating}/5)'

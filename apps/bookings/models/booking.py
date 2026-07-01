@@ -34,6 +34,12 @@ class Booking(models.Model):
     class Meta:
         db_table = 'bookings_booking'
         ordering = ['-created_at']
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(end_date__gt=models.F('start_date')),
+                name='booking_end_date_after_start_date',
+            ),
+        ]
 
     def __str__(self):
         return f'{self.tenant} — {self.listing} ({self.start_date}/{self.end_date})'

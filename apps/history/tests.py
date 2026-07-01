@@ -101,6 +101,20 @@ class TestViewHistoryService:
         ViewHistoryService.record_view(listing=listing, user=user)
         assert ViewHistory.objects.filter(listing=listing, user=user).count() == 2
 
+    def test_view_increments_listing_views_count(self, lessor_client, listing):
+        """Recording a view must increment the listing's cached views_count."""
+        _, user = lessor_client
+        ViewHistoryService.record_view(listing=listing, user=user)
+        listing.refresh_from_db()
+        assert listing.views_count == 1
+
+    def test_repeated_views_accumulate_views_count(self, listing):
+        """Each recorded view must add one to views_count, including anonymous views."""
+        ViewHistoryService.record_view(listing=listing, user=None)
+        ViewHistoryService.record_view(listing=listing, user=None)
+        listing.refresh_from_db()
+        assert listing.views_count == 2
+
 
 @pytest.mark.django_db
 class TestSearchHistoryIntegration:

@@ -8,6 +8,8 @@ from apps.history.services.search_history import SearchHistoryService
 from apps.history.services.view_history import ViewHistoryService
 
 LISTINGS_URL = '/api/v1/listings/'
+POPULAR_SEARCHES_URL = '/api/v1/history/searches/popular/'
+POPULAR_LISTINGS_URL = '/api/v1/history/listings/popular/'
 
 
 @pytest.fixture
@@ -164,3 +166,61 @@ class TestViewHistoryIntegration:
         api_client.get(f'{LISTINGS_URL}{listing.id}/')
         api_client.get(f'{LISTINGS_URL}{listing.id}/')
         assert ViewHistory.objects.filter(listing=listing).count() == 2
+
+
+def results_of(response_data):
+    """Return the list of results from a paginated or plain list response."""
+    return response_data['results'] if isinstance(response_data, dict) else response_data
+
+
+@pytest.mark.django_db
+class TestPopularSearches:
+
+    def test_popular_searches_ordered_by_total_count(self, api_client, lessor_client, lessor_client_2):
+        """Popular searches must be aggregated across all users and ordered by total count descending."""
+        _, user1 = lessor_client
+        _, user2 = lessor_client_2
+        SearchHistoryService.record_search(user=user1, keyword='Berlin')
+        SearchHistoryService.record_search(user=user2, keyword='Berlin')
+        SearchHistoryService.record_search(user=user1, keyword='Munich')
+
+        response = api_client.get(POPULAR_SEARCHES_URL)
+        assert response.status_code == status.HTTP_200_OK
+        results = results_of(response.data)
+        assert results[0]['keyword'] == 'Berlin'
+        assert results[0]['total_count'] == 2
+        assert results[1]['keyword'] == 'Munich'
+        assert results[1]['total_count'] == 1
+
+    def test_popular_searches_publicly_accessible(self, api_client):
+        """Endpoint must be accessible without authentication."""
+        response = api_client.get(POPULAR_SEARCHES_URL)
+        assert response.status_code == status.HTTP_200_OK
+
+
+@pytest.mark.django_db
+class TestPopularListings:
+
+    def test_popular_listings_ordered_by_views(self, api_client, lessor_client, listing_payload):
+        """Listings must be ordered by views_count descending."""
+        from apps.listings.models import Listing
+        _, owner = lessor_client
+        popular = Listing.objects.create(owner=owner, **{**listing_payload, 'title': 'Popular', 'views_count': 10})
+        unpopular = Listing.objects.create(owner=owner, **{**listing_payload, 'title': 'Unpopular', 'views_count': 1})
+
+        response = api_client.get(POPULAR_LISTINGS_URL)
+        assert response.status_code == status.HTTP_200_OK
+        ids = [r['id'] for r in results_of(response.data)]
+        assert ids.index(popular.id) < ids.index(unpopular.id)
+
+    def test_inactive_listing_excluded_from_popular(self, api_client, lessor_client, listing_payload):
+        """Inactive listings must not appear in the popular listings endpoint."""
+        from apps.listings.models import Listing
+        _, owner = lessor_client
+        inactive = Listing.objects.create(
+            owner=owner, **{**listing_payload, 'title': 'Inactive', 'is_active': False, 'views_count': 100},
+        )
+
+        response = api_client.get(POPULAR_LISTINGS_URL)
+        ids = [r['id'] for r in results_of(response.data)]
+        assert inactive.id not in ids

@@ -31,7 +31,7 @@ class ListingListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         """Return active, non-deleted listings."""
-        return Listing.objects.filter(is_active=True, is_deleted=False).select_related('owner')
+        return Listing.objects.filter(is_active=True, is_deleted=False).select_related('owner').prefetch_related('photos')
 
     def get_serializer_class(self):
         """Use create serializer for POST, full serializer for GET."""
@@ -61,7 +61,10 @@ class ListingListCreateView(generics.ListCreateAPIView):
             owner=request.user,
             validated_data=serializer.validated_data,
         )
-        return Response(ListingSerializer(listing).data, status=status.HTTP_201_CREATED)
+        return Response(
+            ListingSerializer(listing, context={'request': request}).data,
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class ListingDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -69,7 +72,7 @@ class ListingDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         """Return non-deleted listings for detail, update, and delete."""
-        return Listing.objects.filter(is_deleted=False).select_related('owner')
+        return Listing.objects.filter(is_deleted=False).select_related('owner').prefetch_related('photos')
 
     def get_serializer_class(self):
         """Use create serializer for write operations, full serializer for read."""
@@ -98,7 +101,7 @@ class ListingDetailView(generics.RetrieveUpdateDestroyAPIView):
         serializer = ListingCreateSerializer(data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         listing = ListingService.update_listing(listing, serializer.validated_data)
-        return Response(ListingSerializer(listing).data)
+        return Response(ListingSerializer(listing, context={'request': request}).data)
 
     def destroy(self, request, *args, **kwargs):
         """Soft-delete the listing instead of removing it from the database."""
@@ -117,7 +120,7 @@ class MyListingsView(generics.ListAPIView):
         """Return only listings owned by the current user."""
         return Listing.objects.filter(
             owner=self.request.user, is_deleted=False
-        ).select_related('owner')
+        ).select_related('owner').prefetch_related('photos')
 
 
 class ListingToggleView(APIView):
@@ -131,4 +134,4 @@ class ListingToggleView(APIView):
         if listing.owner != request.user:
             return Response({'detail': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
         listing = ListingService.toggle_active(listing)
-        return Response(ListingSerializer(listing).data)
+        return Response(ListingSerializer(listing, context={'request': request}).data)

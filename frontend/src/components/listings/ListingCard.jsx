@@ -1,7 +1,7 @@
 import { BedDouble, MapPin, Star } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
-import { listingThumbnail } from '@/lib/images'
+import { ListingImage } from '@/components/listings/ListingImage'
 import { propertyTypeLabel } from '@/lib/propertyType'
 
 export function ListingCard({ listing }) {
@@ -11,10 +11,10 @@ export function ListingCard({ listing }) {
       className="group block overflow-hidden rounded-3xl border border-border bg-card transition-shadow hover:shadow-lg hover:shadow-black/5"
     >
       <div className="aspect-[4/3] overflow-hidden">
-        <img
-          src={listingThumbnail(listing.id)}
+        <ListingImage
+          src={listing.cover_image}
           alt={listing.title}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          className="transition-transform duration-500 group-hover:scale-105"
         />
       </div>
 

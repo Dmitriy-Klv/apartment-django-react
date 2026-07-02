@@ -1,15 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { BedDouble, Loader2, MapPin, Pencil, Star, ToggleLeft, ToggleRight, Trash2 } from 'lucide-react'
+import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { deleteListing, getListing, toggleListing } from '@/api/listings'
 import { getListingReviews } from '@/api/reviews'
 import { BookingForm } from '@/components/bookings/BookingForm'
 import { PageLayout } from '@/components/layout/PageLayout'
+import { ListingImage } from '@/components/listings/ListingImage'
 import { ReviewList } from '@/components/reviews/ReviewList'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/context/AuthContext'
-import { listingThumbnail } from '@/lib/images'
 import { unwrapPage } from '@/lib/pagination'
 import { propertyTypeLabel } from '@/lib/propertyType'
 
@@ -23,6 +24,7 @@ export function ListingDetailPage() {
     queryKey: ['listing', id],
     queryFn: () => getListing(id),
   })
+  const [activePhoto, setActivePhoto] = useState(null)
 
   const { data: reviewsData } = useQuery({
     queryKey: ['listingReviews', id],
@@ -71,8 +73,23 @@ export function ListingDetailPage() {
       <div className="grid gap-10 lg:grid-cols-[1.6fr_1fr]">
         <div className="space-y-6">
           <div className="aspect-[16/9] overflow-hidden rounded-3xl">
-            <img src={listingThumbnail(listing.id)} alt={listing.title} className="h-full w-full object-cover" />
+            <ListingImage src={activePhoto || listing.cover_image} alt={listing.title} />
           </div>
+
+          {listing.photos.length > 1 && (
+            <div className="flex gap-2">
+              {listing.photos.map((photo) => (
+                <button
+                  key={photo.id}
+                  type="button"
+                  onClick={() => setActivePhoto(photo.image)}
+                  className="size-16 shrink-0 overflow-hidden rounded-xl border border-border"
+                >
+                  <img src={photo.image} alt="" className="h-full w-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="space-y-2">
             <div className="flex items-start justify-between gap-4">

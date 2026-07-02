@@ -8,6 +8,7 @@ import { z } from 'zod'
 
 import { createListing, getListing, updateListing } from '@/api/listings'
 import { PageLayout } from '@/components/layout/PageLayout'
+import { ListingPhotoManager } from '@/components/listings/ListingPhotoManager'
 import { Banner } from '@/components/ui/banner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -70,7 +71,7 @@ export function ListingFormPage() {
     onSuccess: (listing) => {
       queryClient.invalidateQueries({ queryKey: ['myListings'] })
       queryClient.invalidateQueries({ queryKey: ['listings'] })
-      navigate(`/listings/${listing.id}`)
+      navigate(isEditing ? `/listings/${listing.id}` : `/listings/${listing.id}/edit`)
     },
     onError: (error) => {
       const data = error.response?.data
@@ -88,6 +89,17 @@ export function ListingFormPage() {
     <PageLayout>
       <div className="mx-auto max-w-2xl space-y-6">
         <h1 className="text-2xl font-semibold">{isEditing ? 'Edit listing' : 'Create a new listing'}</h1>
+
+        <div className="space-y-1.5">
+          <Label>Photos</Label>
+          {isEditing && existingListing ? (
+            <ListingPhotoManager listingId={id} photos={existingListing.photos} />
+          ) : (
+            <p className="rounded-2xl border border-dashed border-border p-4 text-sm text-muted-foreground">
+              Save the listing first, then you can add up to 5 photos and choose a cover photo.
+            </p>
+          )}
+        </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div className="space-y-1.5">

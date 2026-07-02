@@ -33,3 +33,19 @@ export async function toggleListing(id) {
   const response = await apiClient.patch(`/listings/${id}/toggle/`)
   return response.data
 }
+
+export async function uploadListingPhoto(listingId, file) {
+  const formData = new FormData()
+  formData.append('image', file)
+  const response = await apiClient.post(`/listings/${listingId}/photos/`, formData)
+  return response.data
+}
+
+export async function setPrimaryPhoto(listingId, photoId) {
+  const response = await apiClient.patch(`/listings/${listingId}/photos/${photoId}/`)
+  return response.data
+}
+
+export async function deleteListingPhoto(listingId, photoId) {
+  await apiClient.delete(`/listings/${listingId}/photos/${photoId}/`)
+}

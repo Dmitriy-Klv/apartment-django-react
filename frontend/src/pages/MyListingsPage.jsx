@@ -4,8 +4,8 @@ import { Link } from 'react-router-dom'
 
 import { deleteListing, getMyListings, toggleListing } from '@/api/listings'
 import { PageLayout } from '@/components/layout/PageLayout'
+import { ListingImage } from '@/components/listings/ListingImage'
 import { Button } from '@/components/ui/button'
-import { listingThumbnail } from '@/lib/images'
 import { unwrapPage } from '@/lib/pagination'
 import { propertyTypeLabel } from '@/lib/propertyType'
 
@@ -45,11 +45,9 @@ export function MyListingsPage() {
           <div className="space-y-3">
             {listings.map((listing) => (
               <div key={listing.id} className="flex items-center gap-4 rounded-2xl border border-border bg-card p-4">
-                <img
-                  src={listingThumbnail(listing.id)}
-                  alt={listing.title}
-                  className="size-16 shrink-0 rounded-xl object-cover"
-                />
+                <div className="size-16 shrink-0 overflow-hidden rounded-xl">
+                  <ListingImage src={listing.cover_image} alt={listing.title} />
+                </div>
 
                 <div className="min-w-0 flex-1">
                   <Link to={`/listings/${listing.id}`} className="font-semibold hover:underline">

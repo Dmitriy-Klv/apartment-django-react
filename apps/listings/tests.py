@@ -1,13 +1,33 @@
+import io
 import os
 from decimal import Decimal
 
 import pytest
+from django.core.files.uploadedfile import SimpleUploadedFile
+from PIL import Image
 from rest_framework import status
 
-from apps.listings.models import Listing, PropertyType
+from apps.listings.models import Listing, ListingPhoto, PropertyType
 
 LISTINGS_URL = '/api/v1/listings/'
 MY_LISTINGS_URL = '/api/v1/listings/my/'
+
+
+def make_image_file(name='photo.jpg', image_format='JPEG', content_type='image/jpeg', color='red'):
+    """Build a small, genuinely decodable in-memory image for upload tests."""
+    buffer = io.BytesIO()
+    Image.new('RGB', (10, 10), color=color).save(buffer, format=image_format)
+    return SimpleUploadedFile(name, buffer.getvalue(), content_type=content_type)
+
+
+def make_oversized_image_file():
+    """Build a valid but oversized (> 5 MB) PNG using incompressible random pixel noise."""
+    width, height = 2000, 2000
+    raw = os.urandom(width * height * 3)
+    image = Image.frombuffer('RGB', (width, height), raw, 'raw', 'RGB', 0, 1)
+    buffer = io.BytesIO()
+    image.save(buffer, format='PNG', compress_level=0)
+    return SimpleUploadedFile('big.png', buffer.getvalue(), content_type='image/png')
 
 
 @pytest.fixture
@@ -85,6 +105,123 @@ class TestListingCreate:
         assert response.status_code == status.HTTP_201_CREATED
         created = Listing.objects.get(id=response.data['id'])
         assert created.owner == user
+
+
+@pytest.mark.django_db
+class TestListingPhotos:
+
+    def test_listing_without_photos_has_no_cover_image(self, api_client, listing):
+        """A listing with no photos must expose an empty photos list and null cover_image."""
+        response = api_client.get(f'{LISTINGS_URL}{listing.id}/')
+        assert response.data['photos'] == []
+        assert response.data['cover_image'] is None
+
+    def test_owner_can_upload_photo_201(self, lessor_client, listing):
+        """Owner must be able to upload a photo and get its absolute URL back."""
+        client, _ = lessor_client
+        response = client.post(f'{LISTINGS_URL}{listing.id}/photos/', {'image': make_image_file()})
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data['image'].startswith('http')
+
+    def test_first_uploaded_photo_becomes_primary(self, lessor_client, listing):
+        """The first photo uploaded for a listing must automatically become the cover."""
+        client, _ = lessor_client
+        response = client.post(f'{LISTINGS_URL}{listing.id}/photos/', {'image': make_image_file()})
+        assert response.data['is_primary'] is True
+
+    def test_second_photo_is_not_primary_by_default(self, lessor_client, listing):
+        """A second uploaded photo must not replace the existing cover photo."""
+        client, _ = lessor_client
+        client.post(f'{LISTINGS_URL}{listing.id}/photos/', {'image': make_image_file()})
+        response = client.post(f'{LISTINGS_URL}{listing.id}/photos/', {'image': make_image_file()})
+        assert response.data['is_primary'] is False
+
+    def test_upload_oversized_photo_400(self, lessor_client, listing):
+        """A photo larger than 5 MB must be rejected."""
+        client, _ = lessor_client
+        response = client.post(f'{LISTINGS_URL}{listing.id}/photos/', {'image': make_oversized_image_file()})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_upload_disallowed_photo_type_400(self, lessor_client, listing):
+        """A photo format outside the allow-list (e.g. GIF) must be rejected."""
+        client, _ = lessor_client
+        image = make_image_file(name='photo.gif', image_format='GIF', content_type='image/gif')
+        response = client.post(f'{LISTINGS_URL}{listing.id}/photos/', {'image': image})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_max_five_photos_enforced(self, lessor_client, listing):
+        """A sixth photo upload for the same listing must be rejected."""
+        client, _ = lessor_client
+        for _ in range(5):
+            response = client.post(f'{LISTINGS_URL}{listing.id}/photos/', {'image': make_image_file()})
+            assert response.status_code == status.HTTP_201_CREATED
+
+        response = client.post(f'{LISTINGS_URL}{listing.id}/photos/', {'image': make_image_file()})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert ListingPhoto.objects.filter(listing=listing).count() == 5
+
+    def test_non_owner_cannot_upload_403(self, lessor_client_2, listing):
+        """A different lessor must not be able to upload a photo to someone else's listing."""
+        client, _ = lessor_client_2
+        response = client.post(f'{LISTINGS_URL}{listing.id}/photos/', {'image': make_image_file()})
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_tenant_cannot_upload_403(self, tenant_client, listing):
+        """Tenants must not be able to upload listing photos."""
+        client, _ = tenant_client
+        response = client.post(f'{LISTINGS_URL}{listing.id}/photos/', {'image': make_image_file()})
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_anonymous_cannot_upload_401(self, api_client, listing):
+        """Unauthenticated requests must not be able to upload listing photos."""
+        response = api_client.post(f'{LISTINGS_URL}{listing.id}/photos/', {'image': make_image_file()})
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_owner_can_set_different_photo_as_cover(self, lessor_client, listing):
+        """Setting a second photo as primary must unset the first photo's primary flag."""
+        client, _ = lessor_client
+        first = client.post(f'{LISTINGS_URL}{listing.id}/photos/', {'image': make_image_file()}).data
+        second = client.post(f'{LISTINGS_URL}{listing.id}/photos/', {'image': make_image_file()}).data
+
+        response = client.patch(f"{LISTINGS_URL}{listing.id}/photos/{second['id']}/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['is_primary'] is True
+        assert ListingPhoto.objects.get(id=first['id']).is_primary is False
+
+    def test_owner_can_delete_photo_204(self, lessor_client, listing):
+        """Owner must be able to delete one of their listing's photos."""
+        client, _ = lessor_client
+        photo = client.post(f'{LISTINGS_URL}{listing.id}/photos/', {'image': make_image_file()}).data
+        response = client.delete(f"{LISTINGS_URL}{listing.id}/photos/{photo['id']}/")
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert not ListingPhoto.objects.filter(id=photo['id']).exists()
+
+    def test_deleting_primary_photo_promotes_another(self, lessor_client, listing):
+        """Deleting the cover photo must promote a remaining photo to primary."""
+        client, _ = lessor_client
+        first = client.post(f'{LISTINGS_URL}{listing.id}/photos/', {'image': make_image_file()}).data
+        second = client.post(f'{LISTINGS_URL}{listing.id}/photos/', {'image': make_image_file()}).data
+
+        client.delete(f"{LISTINGS_URL}{listing.id}/photos/{first['id']}/")
+        assert ListingPhoto.objects.get(id=second['id']).is_primary is True
+
+    def test_non_owner_cannot_delete_403(self, lessor_client, lessor_client_2, listing):
+        """A different lessor must not be able to delete another owner's listing photo."""
+        client, _ = lessor_client
+        photo = client.post(f'{LISTINGS_URL}{listing.id}/photos/', {'image': make_image_file()}).data
+
+        other_client, _ = lessor_client_2
+        response = other_client.delete(f"{LISTINGS_URL}{listing.id}/photos/{photo['id']}/")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_listing_detail_reflects_cover_image(self, lessor_client, api_client, listing):
+        """The listing detail response must expose the cover photo URL and photo list."""
+        client, _ = lessor_client
+        client.post(f'{LISTINGS_URL}{listing.id}/photos/', {'image': make_image_file()})
+
+        response = api_client.get(f'{LISTINGS_URL}{listing.id}/')
+        assert response.data['cover_image']
+        assert len(response.data['photos']) == 1
 
 
 @pytest.mark.django_db

@@ -23,8 +23,7 @@ def tenant_client_2(db):
     user = User.objects.create_user(
         email=os.getenv('TEST_TENANT2_EMAIL'),
         password=os.getenv('TEST_USER_PASSWORD'),
-        first_name='Second',
-        last_name='Tenant',
+        username='second_tenant',
         role=UserRole.TENANT,
     )
     client = APIClient()

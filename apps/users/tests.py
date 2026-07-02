@@ -25,8 +25,7 @@ def tenant_payload():
     return {
         'email': os.getenv('TEST_TENANT_EMAIL'),
         'password': os.getenv('TEST_USER_PASSWORD'),
-        'first_name': 'John',
-        'last_name': 'Doe',
+        'username': 'john_tenant',
         'role': UserRole.TENANT,
     }
 
@@ -37,8 +36,7 @@ def lessor_payload():
     return {
         'email': os.getenv('TEST_LESSOR_EMAIL'),
         'password': os.getenv('TEST_USER_PASSWORD'),
-        'first_name': 'Jane',
-        'last_name': 'Smith',
+        'username': 'jane_lessor',
         'role': UserRole.LESSOR,
     }
 

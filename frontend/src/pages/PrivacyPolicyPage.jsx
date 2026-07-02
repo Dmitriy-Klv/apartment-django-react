@@ -30,7 +30,7 @@ export function PrivacyPolicyPage() {
         <h2>2. What data we collect</h2>
         <ul>
           <li>
-            <strong>Account data:</strong> email address, first and last name, and role (tenant or landlord),
+            <strong>Account data:</strong> email address, a username of your choice, and role (tenant or landlord),
             provided when you register. Your password is hashed before storage and is never stored or transmitted in
             plain text.
           </li>
@@ -55,7 +55,18 @@ export function PrivacyPolicyPage() {
       </section>
 
       <section className="space-y-2">
-        <h2>3. Content you choose to make public</h2>
+        <h2>3. No real personal data required</h2>
+        <p>
+          Registration only asks for an email address, a password, and a username — there is no separate "real name"
+          field anywhere on this site. Nobody is required or expected to enter their real name, and no part of the
+          registration flow forces, hides, or auto-generates data on your behalf: you choose your own username, and a
+          nickname or pseudonym is entirely appropriate here, since this is a demonstration project built for a
+          software development portfolio rather than a live commercial service.
+        </p>
+      </section>
+
+      <section className="space-y-2">
+        <h2>4. Content you choose to make public</h2>
         <p>
           Listing descriptions and reviews are visible to every visitor of this site. Please do not include personal,
           confidential, or sensitive information — your own or anyone else&apos;s — in reviews, listing descriptions,
@@ -65,17 +76,17 @@ export function PrivacyPolicyPage() {
       </section>
 
       <section className="space-y-2">
-        <h2>4. Where your data is stored</h2>
+        <h2>5. Where your data is stored</h2>
         <p>
           For simplicity within this portfolio project, your session token and a small profile summary (id, email,
-          name, role) are stored in the browser&apos;s local storage after you log in, so you stay signed in. This
+          username, role) are stored in the browser&apos;s local storage after you log in, so you stay signed in. This
           data stays on your device and is only ever sent back to this application&apos;s own server — never to a
           third party.
         </p>
       </section>
 
       <section className="space-y-2">
-        <h2>5. Cookies and local storage consent</h2>
+        <h2>6. Cookies and local storage consent</h2>
         <p>
           SoftStay does not use cookies for analytics, advertising, or tracking, and does not show a cookie consent
           banner. Authentication relies on browser local storage instead of cookies. Storing a session token to keep
@@ -86,7 +97,7 @@ export function PrivacyPolicyPage() {
       </section>
 
       <section className="space-y-2">
-        <h2>6. No third-party sharing</h2>
+        <h2>7. No third-party sharing</h2>
         <p>
           SoftStay does not intentionally share personal data with third-party advertising or analytics providers.
           The application does not use third-party fonts, CDNs, or tracking scripts — all fonts and images are
@@ -97,7 +108,7 @@ export function PrivacyPolicyPage() {
       </section>
 
       <section className="space-y-2">
-        <h2>7. Legal basis for processing</h2>
+        <h2>8. Legal basis for processing</h2>
         <p>
           This project is designed with a German/EU rental market in mind, which is why GDPR is used as the
           reference framework for this policy, regardless of where the application is actually hosted or tested.
@@ -108,7 +119,7 @@ export function PrivacyPolicyPage() {
       </section>
 
       <section className="space-y-2">
-        <h2>8. How long we keep your data</h2>
+        <h2>9. How long we keep your data</h2>
         <p>
           Account, listing, booking, and review data is kept for as long as your account exists. Self-service
           account deletion is not available yet in this demo; to request removal of your data, contact us via the{' '}
@@ -121,7 +132,7 @@ export function PrivacyPolicyPage() {
       </section>
 
       <section className="space-y-2">
-        <h2>9. Your rights</h2>
+        <h2>10. Your rights</h2>
         <p>Depending on your jurisdiction, you may have the right to:</p>
         <ul>
           <li>Access the personal data we hold about you</li>
@@ -134,7 +145,7 @@ export function PrivacyPolicyPage() {
       </section>
 
       <section className="space-y-2">
-        <h2>10. Age requirement</h2>
+        <h2>11. Age requirement</h2>
         <p>
           This application is intended for users who are at least 16 years old, or the minimum age required for
           consent to data processing under applicable local law, whichever is higher.
@@ -142,7 +153,7 @@ export function PrivacyPolicyPage() {
       </section>
 
       <section className="space-y-2">
-        <h2>11. Changes to this policy</h2>
+        <h2>12. Changes to this policy</h2>
         <p>
           As this is an evolving portfolio project, this page may be updated as features change. The "last updated"
           date at the top reflects the most recent revision.

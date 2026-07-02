@@ -23,10 +23,12 @@ export function TermsOfServicePage() {
       <section className="space-y-2">
         <h2>2. Eligibility and accounts</h2>
         <p>
-          You may register as a tenant or a landlord using an email address and password if you are at least 16
-          years old, or the minimum age required for consent under applicable local law. You are responsible for the
-          accuracy of the information you provide and for keeping your password confidential. Accounts are for
-          demonstration and testing purposes only.
+          You may register as a tenant or a landlord using an email address, a password, and a username, if you are
+          at least 16 years old, or the minimum age required for consent under applicable local law. Registration
+          does not ask for your real name, and nobody is required or expected to enter one — a nickname or pseudonym
+          is fine for the username, since this is a demonstration project built for a portfolio rather than a live
+          commercial service. You are responsible for the accuracy of the information you provide and for keeping
+          your password confidential. Accounts are for demonstration and testing purposes only.
         </p>
       </section>
 

@@ -8,8 +8,7 @@ class RegisterSerializer(serializers.Serializer):
 
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True, min_length=8)
-    first_name = serializers.CharField(max_length=150)
-    last_name = serializers.CharField(max_length=150)
+    username = serializers.CharField(max_length=150)
     role = serializers.ChoiceField(choices=UserRole.choices)
 
     def validate_email(self, value):
@@ -18,13 +17,19 @@ class RegisterSerializer(serializers.Serializer):
             raise serializers.ValidationError('Email already registered.')
         return value
 
+    def validate_username(self, value):
+        """Ensure the username is not already taken."""
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError('Username already taken.')
+        return value
+
 
 class UserSerializer(serializers.ModelSerializer):
     """Serialize user data for read-only responses."""
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'first_name', 'last_name', 'role', 'created_at']
+        fields = ['id', 'email', 'username', 'role', 'created_at']
 
 
 class LogoutSerializer(serializers.Serializer):

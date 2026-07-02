@@ -121,13 +121,17 @@ export function PrivacyPolicyPage() {
       <section className="space-y-2">
         <h2>9. How long we keep your data</h2>
         <p>
-          Account, listing, booking, and review data is kept for as long as your account exists. Self-service
-          account deletion is not available yet in this demo; to request removal of your data, contact us via the{' '}
-          <Link to="/contact" className="underline underline-offset-4">
-            Contact page
+          Account, listing, booking, and review data is kept for as long as your account exists. You can delete your
+          own account at any time from your{' '}
+          <Link to="/profile" className="underline underline-offset-4">
+            profile page
           </Link>
-          . As this is a demo environment, its database may also be periodically reset for maintenance or testing,
-          which removes accounts and their associated content without individual notice.
+          , after confirming your password. Deleting your account replaces your email and username with anonymized
+          placeholders and signs you out everywhere — it does not remove bookings or reviews tied to your account,
+          because those records are also linked to other users (a landlord or a fellow guest) who would otherwise
+          lose their own history. This mirrors how established booking platforms handle account deletion. As this is
+          a demo environment, its database may also be periodically reset for maintenance or testing, which removes
+          accounts and their associated content without individual notice.
         </p>
       </section>
 

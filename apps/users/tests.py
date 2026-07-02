@@ -241,3 +241,61 @@ class TestPermissions:
         client, data = auth_lessor
         response = client.get(ME_URL)
         assert response.data['role'] == UserRole.LESSOR
+
+
+@pytest.mark.django_db
+class TestDeleteAccount:
+
+    def test_delete_account_correct_password_returns_204(self, auth_tenant, tenant_payload):
+        """Deleting the account with the correct password must return 204."""
+        client, _ = auth_tenant
+        response = client.delete(ME_URL, {'password': tenant_payload['password']})
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    def test_delete_account_wrong_password_returns_400(self, auth_tenant):
+        """Deleting the account with an incorrect password must return 400."""
+        client, _ = auth_tenant
+        response = client.delete(ME_URL, {'password': 'wrongpassword'})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_delete_account_missing_password_returns_400(self, auth_tenant):
+        """Deleting the account without a password must return 400."""
+        client, _ = auth_tenant
+        response = client.delete(ME_URL, {})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_delete_account_without_auth_returns_401(self, api_client):
+        """Deleting the account without authentication must return 401."""
+        response = api_client.delete(ME_URL, {'password': 'whatever'})
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_delete_account_anonymizes_user_in_db(self, auth_tenant, tenant_payload):
+        """A deleted account must be deactivated and have its identifying fields anonymized."""
+        client, data = auth_tenant
+        user_id = data['user']['id']
+        client.delete(ME_URL, {'password': tenant_payload['password']})
+
+        user = User.objects.get(id=user_id)
+        assert user.is_active is False
+        assert user.email != tenant_payload['email']
+        assert user.username != tenant_payload['username']
+
+    def test_login_after_deletion_returns_401(self, auth_tenant, tenant_payload):
+        """A deleted account must no longer be able to log in with its original credentials."""
+        client, _ = auth_tenant
+        client.delete(ME_URL, {'password': tenant_payload['password']})
+
+        response = APIClient().post(LOGIN_URL, {
+            'email': tenant_payload['email'],
+            'password': tenant_payload['password'],
+        })
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_refresh_token_blacklisted_after_deletion(self, auth_tenant, tenant_payload):
+        """The refresh token issued before deletion must no longer work afterwards."""
+        client, data = auth_tenant
+        refresh_token = data['refresh']
+        client.delete(ME_URL, {'password': tenant_payload['password']})
+
+        response = APIClient().post(REFRESH_URL, {'refresh': refresh_token})
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED

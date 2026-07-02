@@ -100,8 +100,11 @@ export function TermsOfServicePage() {
       <section className="space-y-2">
         <h2>10. Termination</h2>
         <p>
-          Accounts and their associated data may be removed at any time, for example during routine cleanup of demo
-          and test data on this project.
+          You may delete your own account at any time from your profile page, after confirming your password. This
+          anonymizes your email and username and signs you out everywhere; bookings and reviews tied to your account
+          remain visible to other users without your identity attached, since they are also linked to other users'
+          own history. Accounts and their associated data may also be removed at any time by us, for example during
+          routine cleanup of demo and test data on this project.
         </p>
       </section>
 

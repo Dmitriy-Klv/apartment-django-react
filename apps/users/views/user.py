@@ -7,7 +7,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView as BaseTokenRefreshView
 
-from apps.users.serializers.user import LogoutSerializer, RegisterSerializer, UserSerializer
+from apps.users.serializers.user import DeleteAccountSerializer, LogoutSerializer, RegisterSerializer, UserSerializer
 from apps.users.services.user import UserService
 
 
@@ -94,13 +94,21 @@ class LogoutView(APIView):
 
 
 class MeView(APIView):
-    """Return the authenticated user's profile."""
+    """Return or delete the authenticated user's profile."""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         """Return current user's data."""
         return Response(UserSerializer(request.user).data)
+
+    def delete(self, request):
+        """Verify the password, then anonymize the account and blacklist its tokens."""
+        serializer = DeleteAccountSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+
+        UserService.delete_account(request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class TokenRefreshView(BaseTokenRefreshView):

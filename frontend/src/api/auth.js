@@ -23,3 +23,7 @@ export async function getMe() {
 export async function logoutUser(refresh) {
   await apiClient.post('/auth/logout/', { refresh })
 }
+
+export async function deleteAccount(password) {
+  await apiClient.delete('/auth/me/', { data: { password } })
+}

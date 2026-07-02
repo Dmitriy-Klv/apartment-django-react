@@ -118,6 +118,20 @@ class TestListingList:
         for result in response.data['results']:
             assert 'berlin' in result['city'].lower()
 
+    def test_filter_by_district(self, api_client, listing):
+        """?district= must filter listings by district name (case-insensitive)."""
+        response = api_client.get(LISTINGS_URL, {'district': 'mitte'})
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['count'] >= 1
+        for result in response.data['results']:
+            assert 'mitte' in result['district'].lower()
+
+    def test_filter_by_district_no_match_returns_empty(self, api_client, listing):
+        """?district= with no matching district must return an empty result."""
+        response = api_client.get(LISTINGS_URL, {'district': 'nonexistentdistrict'})
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['count'] == 0
+
     def test_filter_by_price_max(self, api_client, listing):
         """?price_max= must exclude listings above the given price."""
         response = api_client.get(LISTINGS_URL, {'price_max': '2000'})

@@ -25,8 +25,7 @@ class RegisterView(APIView):
         user = UserService.create_user(
             email=data['email'],
             password=data['password'],
-            first_name=data['first_name'],
-            last_name=data['last_name'],
+            username=data['username'],
             role=data['role'],
         )
 

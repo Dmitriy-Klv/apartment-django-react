@@ -33,7 +33,7 @@ export function ProfilePage() {
                 </span>
                 <div>
                   <p className="font-semibold">
-                    {me.first_name} {me.last_name}
+                    {me.username}
                   </p>
                   <p className="text-sm text-muted-foreground capitalize">{me.role}</p>
                 </div>

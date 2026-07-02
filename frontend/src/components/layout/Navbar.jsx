@@ -44,7 +44,7 @@ export function Navbar() {
           <Button asChild variant="ghost" size="lg" className="gap-2 rounded-full px-4">
             <Link to="/profile">
               <User className="size-4" />
-              {user.first_name}
+              {user.username}
             </Link>
           </Button>
           <Button variant="outline" size="lg" className="gap-2 rounded-full px-4" onClick={logout}>

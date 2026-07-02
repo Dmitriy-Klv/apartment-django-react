@@ -14,8 +14,11 @@ import { useAuth } from '@/context/AuthContext'
 
 const registerSchema = z
   .object({
-    firstName: z.string().min(1, 'First name is required'),
-    lastName: z.string().min(1, 'Last name is required'),
+    username: z
+      .string()
+      .min(3, 'At least 3 characters')
+      .max(150)
+      .regex(/^[\w.@+-]+$/, 'Letters, numbers and . @ + - _ only'),
     email: z.string().email('Enter a valid email address'),
     password: z.string().min(8, 'At least 8 characters'),
     confirmPassword: z.string(),
@@ -54,7 +57,7 @@ export function RegisterPage() {
       navigate('/')
     } catch (error) {
       const data = error.response?.data
-      setServerError(data?.email?.[0] || data?.detail || 'Something went wrong. Please try again.')
+      setServerError(data?.email?.[0] || data?.username?.[0] || data?.detail || 'Something went wrong. Please try again.')
     }
   }
 
@@ -85,17 +88,13 @@ export function RegisterPage() {
           )}
         />
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="firstName">First name</Label>
-            <Input id="firstName" autoComplete="given-name" {...register('firstName')} />
-            {errors.firstName && <p className="text-xs text-destructive">{errors.firstName.message}</p>}
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="lastName">Last name</Label>
-            <Input id="lastName" autoComplete="family-name" {...register('lastName')} />
-            {errors.lastName && <p className="text-xs text-destructive">{errors.lastName.message}</p>}
-          </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="username">Username</Label>
+          <Input id="username" autoComplete="username" {...register('username')} />
+          {errors.username && <p className="text-xs text-destructive">{errors.username.message}</p>}
+          <p className="text-xs text-muted-foreground">
+            This is a portfolio demo — feel free to use a nickname instead of your real name.
+          </p>
         </div>
 
         <div className="space-y-1.5">

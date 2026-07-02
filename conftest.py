@@ -22,8 +22,7 @@ def lessor_client(db):
     user = User.objects.create_user(
         email=os.getenv('TEST_LESSOR_EMAIL'),
         password=TEST_USER_PASSWORD,
-        first_name='Jane',
-        last_name='Smith',
+        username='jane_lessor',
         role=UserRole.LESSOR,
     )
     client = APIClient()
@@ -38,8 +37,7 @@ def lessor_client_2(db):
     user = User.objects.create_user(
         email=os.getenv('TEST_LESSOR2_EMAIL'),
         password=TEST_USER_PASSWORD,
-        first_name='Other',
-        last_name='Lessor',
+        username='other_lessor',
         role=UserRole.LESSOR,
     )
     client = APIClient()
@@ -54,8 +52,7 @@ def tenant_client(db):
     user = User.objects.create_user(
         email=os.getenv('TEST_TENANT_EMAIL'),
         password=TEST_USER_PASSWORD,
-        first_name='John',
-        last_name='Doe',
+        username='john_tenant',
         role=UserRole.TENANT,
     )
     client = APIClient()

@@ -4,7 +4,11 @@ import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/context/AuthContext'
 
-const BASE_LINKS = [{ label: 'Apartments', to: '/listings' }]
+const BASE_LINKS = [
+  { label: 'Apartments', to: '/listings' },
+  { label: 'About', to: '/about' },
+  { label: 'Contact', to: '/contact' },
+]
 
 const ROLE_LINKS = {
   tenant: [{ label: 'My bookings', to: '/my-bookings' }],

@@ -8,3 +8,8 @@ export const IMAGES = {
   heroVilla,
   heroSlides: [property1, property2, property3, property4],
 }
+
+export function listingThumbnail(listingId) {
+  const slides = IMAGES.heroSlides
+  return slides[listingId % slides.length]
+}

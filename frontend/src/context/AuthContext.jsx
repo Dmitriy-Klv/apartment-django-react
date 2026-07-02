@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo, useState } from 'react'
 
-import { clearSession, getStoredUser, saveSession } from '@/lib/authStorage'
+import { logoutUser } from '@/api/auth'
+import { clearSession, getRefreshToken, getStoredUser, saveSession } from '@/lib/authStorage'
 
 const AuthContext = createContext(null)
 
@@ -15,7 +16,13 @@ export function AuthProvider({ children }) {
         saveSession(session)
         setUser(session.user)
       },
-      logout: () => {
+      logout: async () => {
+        const refresh = getRefreshToken()
+        if (refresh) {
+          try {
+            await logoutUser(refresh)
+          } catch {}
+        }
         clearSession()
         setUser(null)
       },

@@ -205,4 +205,15 @@ class TestListingRatingSignals:
         review.delete()
         listing.refresh_from_db()
         assert listing.reviews_count == 0
+
+
+@pytest.mark.django_db
+class TestReviewModel:
+
+    def test_str_representation(self, tenant_client, listing):
+        """String representation must include author, listing, and rating."""
+        _, tenant = tenant_client
+        booking = checked_in_booking(listing, tenant)
+        review = Review.objects.create(listing=listing, author=tenant, booking=booking, rating=4, comment='Good')
+        assert str(review) == f'{tenant} → {listing} (4/5)'
         assert listing.average_rating == 0

@@ -224,3 +224,21 @@ class TestPopularListings:
         response = api_client.get(POPULAR_LISTINGS_URL)
         ids = [r['id'] for r in results_of(response.data)]
         assert inactive.id not in ids
+
+
+@pytest.mark.django_db
+class TestHistoryModelStr:
+
+    def test_search_history_str_representation(self, lessor_client):
+        """String representation of a search history entry must include user, keyword, and count."""
+        _, user = lessor_client
+        SearchHistoryService.record_search(user=user, keyword='Berlin')
+        obj = SearchHistory.objects.get(user=user, keyword='Berlin')
+        assert str(obj) == f'{user} — "Berlin" (1x)'
+
+    def test_view_history_str_representation(self, lessor_client, listing):
+        """String representation of a view history entry must include user, listing, and timestamp."""
+        _, user = lessor_client
+        ViewHistoryService.record_view(listing=listing, user=user)
+        obj = ViewHistory.objects.get(user=user, listing=listing)
+        assert str(obj) == f'{user} → {listing} at {obj.viewed_at}'

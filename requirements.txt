@@ -6,6 +6,7 @@ django-filter>=24
 django-cors-headers>=4.4
 Pillow>=10.0
 PyMySQL>=1.1
+gunicorn>=22.0
 pytest>=8.0
 pytest-django>=4.8
 pytest-env>=1.1

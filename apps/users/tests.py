@@ -50,14 +50,6 @@ def tenant_user(db, tenant_payload):
 
 
 @pytest.fixture
-def lessor_user(db, lessor_payload):
-    """Create and return a lessor user in the database."""
-    payload = lessor_payload.copy()
-    password = payload.pop('password')
-    return User.objects.create_user(password=password, **payload)
-
-
-@pytest.fixture
 def auth_tenant(api_client, db, tenant_payload):
     """Register a tenant and return the client authenticated with the access token."""
     response = api_client.post(REGISTER_URL, tenant_payload)
@@ -299,3 +291,28 @@ class TestDeleteAccount:
 
         response = APIClient().post(REFRESH_URL, {'refresh': refresh_token})
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.django_db
+class TestUserManager:
+
+    def test_create_user_without_email_raises(self):
+        """Creating a user with no email must raise a ValueError."""
+        with pytest.raises(ValueError):
+            User.objects.create_user(email='', password='SomePass123', username='no_email', role=UserRole.TENANT)
+
+    def test_create_superuser_sets_staff_and_superuser_flags(self):
+        """create_superuser must set both is_staff and is_superuser to True."""
+        admin = User.objects.create_superuser(
+            email=os.getenv('TEST_TENANT_EMAIL'), password='SomePass123', username='admin_user', role=UserRole.TENANT,
+        )
+        assert admin.is_staff is True
+        assert admin.is_superuser is True
+
+
+@pytest.mark.django_db
+class TestUserModel:
+
+    def test_str_representation(self, tenant_user):
+        """String representation of a user must be its email."""
+        assert str(tenant_user) == tenant_user.email

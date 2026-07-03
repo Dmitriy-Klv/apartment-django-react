@@ -262,6 +262,24 @@ class TestBookingStatusUpdate:
         response = tenant.patch(f'{BOOKINGS_URL}{booking_id}/status/', {'status': BookingStatus.CANCELED})
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    def test_cancel_non_pending_400(self, tenant_client, lessor_client, listing):
+        """Cancelling a booking that is no longer pending must be rejected."""
+        tenant, _ = tenant_client
+        booking_id = self._create_booking(tenant, listing.id)
+        lessor, _ = lessor_client
+        lessor.patch(f'{BOOKINGS_URL}{booking_id}/status/', {'status': BookingStatus.CONFIRMED})
+        response = tenant.patch(f'{BOOKINGS_URL}{booking_id}/status/', {'status': BookingStatus.CANCELED})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_reject_non_pending_400(self, tenant_client, lessor_client, listing):
+        """Rejecting a booking that is no longer pending must be rejected."""
+        tenant, _ = tenant_client
+        booking_id = self._create_booking(tenant, listing.id)
+        lessor, _ = lessor_client
+        lessor.patch(f'{BOOKINGS_URL}{booking_id}/status/', {'status': BookingStatus.CONFIRMED})
+        response = lessor.patch(f'{BOOKINGS_URL}{booking_id}/status/', {'status': BookingStatus.REJECTED})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_double_confirm_400(self, tenant_client, lessor_client, listing):
         """Confirming an already confirmed booking must fail."""
         tenant, _ = tenant_client
@@ -324,3 +342,16 @@ class TestBookingServiceUnit:
         _, other_lessor = lessor_client_2
         with pytest.raises(PermissionDenied):
             BookingService.confirm_booking(booking, other_lessor)
+
+
+@pytest.mark.django_db
+class TestBookingModel:
+
+    def test_str_representation(self, tenant_client, listing):
+        """String representation must include tenant, listing, and date range."""
+        _, tenant = tenant_client
+        start = date.today() + timedelta(days=5)
+        booking = Booking.objects.create(
+            listing=listing, tenant=tenant, start_date=start, end_date=start + timedelta(days=2),
+        )
+        assert str(booking) == f'{tenant} — {listing} ({booking.start_date}/{booking.end_date})'

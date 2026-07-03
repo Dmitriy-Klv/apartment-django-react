@@ -8,6 +8,8 @@ from PIL import Image
 from rest_framework import status
 
 from apps.listings.models import Listing, ListingPhoto, PropertyType
+from apps.listings.serializers.listing import ListingCreateSerializer, ListingSerializer
+from apps.listings.views.listing import ListingDetailView, ListingListCreateView
 
 LISTINGS_URL = '/api/v1/listings/'
 MY_LISTINGS_URL = '/api/v1/listings/my/'
@@ -187,6 +189,15 @@ class TestListingPhotos:
         assert response.status_code == status.HTTP_200_OK
         assert response.data['is_primary'] is True
         assert ListingPhoto.objects.get(id=first['id']).is_primary is False
+
+    def test_non_owner_cannot_set_primary_403(self, lessor_client, lessor_client_2, listing):
+        """A different lessor must not be able to change another owner's cover photo."""
+        client, _ = lessor_client
+        photo = client.post(f'{LISTINGS_URL}{listing.id}/photos/', {'image': make_image_file()}).data
+
+        other_client, _ = lessor_client_2
+        response = other_client.patch(f"{LISTINGS_URL}{listing.id}/photos/{photo['id']}/")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_owner_can_delete_photo_204(self, lessor_client, listing):
         """Owner must be able to delete one of their listing's photos."""
@@ -490,3 +501,43 @@ class TestMyListings:
         """Unauthenticated user must receive 401 when accessing /my/."""
         response = api_client.get(MY_LISTINGS_URL)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.django_db
+class TestListingModel:
+
+    def test_listing_str_representation(self, listing):
+        """String representation of a listing must be its title."""
+        assert str(listing) == listing.title
+
+    def test_listing_photo_str_representation(self, lessor_client, listing):
+        """String representation of a listing photo must reference the photo and listing ids."""
+        client, _ = lessor_client
+        photo_data = client.post(f'{LISTINGS_URL}{listing.id}/photos/', {'image': make_image_file()}).data
+        photo = ListingPhoto.objects.get(id=photo_data['id'])
+        assert str(photo) == f'Photo #{photo.id} for listing #{listing.id}'
+
+
+@pytest.mark.django_db
+class TestListingSerializerSelection:
+    """Method-based serializer switch used by drf-spectacular for accurate Swagger docs."""
+
+    def test_list_create_view_uses_create_serializer_for_post(self, rf):
+        view = ListingListCreateView()
+        view.request = rf.post(LISTINGS_URL)
+        assert view.get_serializer_class() is ListingCreateSerializer
+
+    def test_list_create_view_uses_full_serializer_for_get(self, rf):
+        view = ListingListCreateView()
+        view.request = rf.get(LISTINGS_URL)
+        assert view.get_serializer_class() is ListingSerializer
+
+    def test_detail_view_uses_create_serializer_for_patch(self, rf):
+        view = ListingDetailView()
+        view.request = rf.patch(f'{LISTINGS_URL}1/')
+        assert view.get_serializer_class() is ListingCreateSerializer
+
+    def test_detail_view_uses_full_serializer_for_get(self, rf):
+        view = ListingDetailView()
+        view.request = rf.get(f'{LISTINGS_URL}1/')
+        assert view.get_serializer_class() is ListingSerializer

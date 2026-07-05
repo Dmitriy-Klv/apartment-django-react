@@ -80,3 +80,4 @@ docker-compose.override.yml
 *.bak
 *.orig
 Thumbs.db
+/README.md

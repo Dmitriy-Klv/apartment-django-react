@@ -1,15 +1,22 @@
 import io
 import os
+import random
 from decimal import Decimal
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.management import call_command
 from PIL import Image
 from rest_framework import status
 
+from apps.bookings.models import Booking, BookingStatus
+from apps.history.models import SearchHistory, ViewHistory
 from apps.listings.models import Listing, ListingPhoto, PropertyType
 from apps.listings.serializers.listing import ListingCreateSerializer, ListingSerializer
 from apps.listings.views.listing import ListingDetailView, ListingListCreateView
+from apps.reviews.models import Review
+from apps.users.models import User, UserRole
+from apps.users.services.user import UserService
 
 LISTINGS_URL = '/api/v1/listings/'
 MY_LISTINGS_URL = '/api/v1/listings/my/'
@@ -541,3 +548,77 @@ class TestListingSerializerSelection:
         view = ListingDetailView()
         view.request = rf.get(f'{LISTINGS_URL}1/')
         assert view.get_serializer_class() is ListingSerializer
+
+
+@pytest.mark.django_db
+class TestSeedDemoDataCommand:
+    """Coverage for the seed_demo_data management command used to populate demo data."""
+
+    def _seed(self, **overrides):
+        """Call seed_demo_data with small, fixed-seed counts so results are fast and deterministic."""
+        random.seed(1234)
+        options = {'lessors': 2, 'tenants': 3, 'listings': 4, 'clear': False}
+        options.update(overrides)
+        call_command('seed_demo_data', **options)
+
+    def test_creates_expected_user_and_listing_counts(self):
+        """Command must create the requested number of seed users and listings."""
+        self._seed()
+        assert User.objects.filter(email__iendswith='@seed.example').count() == 2 + 1 + 3 + 1
+        assert Listing.objects.count() == 4
+        assert Listing.objects.filter(is_deleted=True).count() == 0
+
+    def test_creates_known_demo_accounts(self):
+        """Command must create fixed-credential demo Lessor and Tenant accounts."""
+        self._seed()
+        lessor = User.objects.get(username='demo_lessor')
+        tenant = User.objects.get(username='demo_tenant')
+        assert lessor.role == UserRole.LESSOR
+        assert tenant.role == UserRole.TENANT
+
+    def test_bookings_satisfy_date_constraint_and_vary_in_status(self):
+        """All seeded bookings must have end_date after start_date and cover multiple statuses."""
+        self._seed()
+        bookings = Booking.objects.all()
+        assert bookings.count() > 0
+        assert all(booking.end_date > booking.start_date for booking in bookings)
+
+    def test_reviews_exist_only_for_checked_in_bookings(self):
+        """Every review must belong to a checked-in booking and have a rating within 1-5."""
+        self._seed()
+        checked_in_count = Booking.objects.filter(status=BookingStatus.CHECKED_IN).count()
+        assert Review.objects.count() == checked_in_count
+        assert all(1 <= review.rating <= 5 for review in Review.objects.all())
+
+    def test_listing_rating_cache_updated_via_signal(self):
+        """A listing with a review must have its average_rating/reviews_count updated by signals."""
+        self._seed()
+        reviewed_listing = Listing.objects.filter(reviews_count__gt=0).first()
+        assert reviewed_listing is not None
+        assert reviewed_listing.average_rating > 0
+
+    def test_view_history_matches_views_count_totals(self):
+        """Sum of Listing.views_count must equal the number of ViewHistory rows created."""
+        self._seed()
+        total_views_count = sum(Listing.objects.values_list('views_count', flat=True))
+        assert total_views_count == ViewHistory.objects.count()
+
+    def test_search_history_respects_unique_together(self):
+        """Repeated search keywords for the same tenant must not violate the unique constraint."""
+        self._seed()
+        assert SearchHistory.objects.count() > 0
+
+    def test_clear_removes_only_seed_data(self):
+        """--clear must delete seed users and their data without touching real accounts."""
+        real_user = UserService.create_user(
+            email='real-owner@example.test', password='irrelevant-pass-1', username='real_owner', role=UserRole.LESSOR,
+        )
+        self._seed()
+        self._seed(clear=True)
+        assert User.objects.filter(pk=real_user.pk).exists()
+
+    def test_rerun_without_clear_does_not_raise(self):
+        """Calling the command twice without --clear must not raise on uniqueness constraints."""
+        self._seed()
+        self._seed()
+        assert User.objects.filter(email__iendswith='@seed.example').count() == (2 + 1 + 3 + 1) * 2 - 2

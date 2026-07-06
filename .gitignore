@@ -30,6 +30,9 @@ db.sqlite3-journal
 media/
 staticfiles/
 
+# Demo seed photos (placed manually on the server, not part of the repo)
+apps/listings/management/commands/demo_photo/
+
 # Node / React
 node_modules/
 npm-debug.log*

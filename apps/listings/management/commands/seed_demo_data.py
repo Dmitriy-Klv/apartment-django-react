@@ -1,15 +1,17 @@
 import random
 import uuid
 from datetime import date, timedelta
+from pathlib import Path
 
 import environ
+from django.core.files import File
 from django.core.management.base import BaseCommand
 from faker import Faker
 
 from apps.bookings.models import Booking, BookingStatus
 from apps.history.services.search_history import SearchHistoryService
 from apps.history.services.view_history import ViewHistoryService
-from apps.listings.models import Listing, PropertyType
+from apps.listings.models import Listing, ListingPhoto, PropertyType
 from apps.reviews.models import Review
 from apps.users.models import User, UserRole
 from apps.users.services.user import UserService
@@ -17,6 +19,8 @@ from apps.users.services.user import UserService
 env = environ.Env()
 
 SEED_EMAIL_DOMAIN = 'seed.example'
+DEMO_PHOTO_DIR = Path(__file__).resolve().parent / 'demo_photo'
+DEMO_PHOTO_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp'}
 
 GERMAN_DISTRICTS = {
     'Berlin': ['Mitte', 'Kreuzberg', 'Charlottenburg', 'Prenzlauer Berg', 'Neukoelln'],
@@ -62,17 +66,24 @@ class Command(BaseCommand):
         if options['clear']:
             self._clear_seed_data()
 
+        demo_photos = self._discover_demo_photos()
+        if not demo_photos:
+            self.stdout.write(self.style.WARNING(
+                f'No demo photos found in {DEMO_PHOTO_DIR} — listings will be seeded without photos.'
+            ))
+
         lessors = self._create_users(options['lessors'], UserRole.LESSOR)
         tenants = self._create_users(options['tenants'], UserRole.TENANT)
-        listings = self._create_listings(options['listings'], lessors)
+        listings = self._create_listings(options['listings'], lessors, demo_photos)
         bookings = self._create_bookings(listings, tenants)
         reviews = self._create_reviews(bookings)
         views_created = self._create_view_history(listings, tenants)
         searches_created = self._create_search_history(tenants)
+        photos_attached = sum(1 for listing in listings if listing.photos.exists())
 
         self.stdout.write(self.style.SUCCESS(
-            f'Seeded {len(lessors)} lessors, {len(tenants)} tenants, {len(listings)} listings, '
-            f'{len(bookings)} bookings, {len(reviews)} reviews, '
+            f'Seeded {len(lessors)} lessors, {len(tenants)} tenants, {len(listings)} listings '
+            f'({photos_attached} with a photo), {len(bookings)} bookings, {len(reviews)} reviews, '
             f'{views_created} views, {searches_created} searches.'
         ))
 
@@ -109,12 +120,12 @@ class Command(BaseCommand):
             return existing
         return UserService.create_user(email=email, password=password, username=username, role=role)
 
-    def _create_listings(self, count, lessors):
+    def _create_listings(self, count, lessors, demo_photos):
         """Create `count` listings with realistic German locations, owned by random lessors."""
         listings = []
         for i in range(count):
             city = random.choice(list(GERMAN_DISTRICTS.keys()))
-            listings.append(Listing.objects.create(
+            listing = Listing.objects.create(
                 owner=random.choice(lessors),
                 title=random.choice(LISTING_TITLES),
                 description=self.fake.paragraph(nb_sentences=3),
@@ -125,8 +136,27 @@ class Command(BaseCommand):
                 rooms=random.randint(1, 6),
                 property_type=random.choice(PropertyType.values),
                 is_active=(i % 6 != 0),
-            ))
+            )
+            if demo_photos:
+                self._attach_random_photo(listing, demo_photos)
+            listings.append(listing)
         return listings
+
+    def _discover_demo_photos(self):
+        """Return the list of usable image files placed in DEMO_PHOTO_DIR, or an empty list if none exist."""
+        if not DEMO_PHOTO_DIR.is_dir():
+            return []
+        return [
+            path for path in DEMO_PHOTO_DIR.iterdir()
+            if path.is_file() and path.suffix.lower() in DEMO_PHOTO_EXTENSIONS
+        ]
+
+    def _attach_random_photo(self, listing, demo_photos):
+        """Attach one randomly chosen demo photo to the listing as its cover image."""
+        source = random.choice(demo_photos)
+        photo = ListingPhoto(listing=listing, is_primary=True)
+        with source.open('rb') as file_obj:
+            photo.image.save(f'{uuid.uuid4().hex}{source.suffix.lower()}', File(file_obj), save=True)
 
     def _generate_booking_windows(self, count):
         """Yield `count` sequential, non-overlapping (start, end) date windows for one listing."""

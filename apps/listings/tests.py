@@ -12,6 +12,7 @@ from rest_framework import status
 
 from apps.bookings.models import Booking, BookingStatus
 from apps.history.models import SearchHistory, ViewHistory
+from apps.listings.management.commands import seed_demo_data as seed_demo_data_command
 from apps.listings.models import Listing, ListingPhoto, PropertyType
 from apps.listings.serializers.listing import ListingCreateSerializer, ListingSerializer
 from apps.listings.views.listing import ListingDetailView, ListingListCreateView
@@ -623,6 +624,45 @@ class TestSeedDemoDataCommand:
         self._seed()
         self._seed()
         assert User.objects.filter(email__iendswith='@seed.example').count() == (2 + 1 + 3 + 1) * 2 - 2
+
+    def test_no_photos_created_when_demo_photo_dir_missing(self, monkeypatch, tmp_path):
+        """With no demo_photo directory present, listings must be seeded without any photos."""
+        monkeypatch.setattr(seed_demo_data_command, 'DEMO_PHOTO_DIR', tmp_path / 'does-not-exist')
+        self._seed()
+        assert ListingPhoto.objects.count() == 0
+
+    def test_no_photos_created_when_demo_photo_dir_empty(self, monkeypatch, tmp_path):
+        """An existing but empty demo_photo directory must not cause errors and yields no photos."""
+        monkeypatch.setattr(seed_demo_data_command, 'DEMO_PHOTO_DIR', tmp_path)
+        self._seed()
+        assert ListingPhoto.objects.count() == 0
+
+    def test_attaches_one_random_photo_per_listing_when_demo_photos_exist(self, monkeypatch, settings, tmp_path):
+        """Each seeded listing must receive exactly one primary photo picked from demo_photo."""
+        settings.MEDIA_ROOT = tmp_path / 'media'
+        photo_dir = tmp_path / 'demo_photo'
+        photo_dir.mkdir()
+        Image.new('RGB', (10, 10), color='blue').save(photo_dir / 'sample.jpg', format='JPEG')
+        monkeypatch.setattr(seed_demo_data_command, 'DEMO_PHOTO_DIR', photo_dir)
+
+        self._seed(listings=4)
+
+        assert ListingPhoto.objects.count() == 4
+        for listing in Listing.objects.all():
+            assert listing.photos.count() == 1
+            assert listing.photos.first().is_primary is True
+
+    def test_non_image_files_in_demo_photo_dir_are_ignored(self, monkeypatch, settings, tmp_path):
+        """Non-image files placed in demo_photo (e.g. a README) must never be used as a photo."""
+        settings.MEDIA_ROOT = tmp_path / 'media'
+        photo_dir = tmp_path / 'demo_photo'
+        photo_dir.mkdir()
+        (photo_dir / 'notes.txt').write_text('not an image')
+        monkeypatch.setattr(seed_demo_data_command, 'DEMO_PHOTO_DIR', photo_dir)
+
+        self._seed(listings=2)
+
+        assert ListingPhoto.objects.count() == 0
 
 
 @pytest.mark.django_db

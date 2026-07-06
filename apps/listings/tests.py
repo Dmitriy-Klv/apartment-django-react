@@ -1,6 +1,7 @@
 import io
 import os
 import random
+from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
@@ -622,3 +623,68 @@ class TestSeedDemoDataCommand:
         self._seed()
         self._seed()
         assert User.objects.filter(email__iendswith='@seed.example').count() == (2 + 1 + 3 + 1) * 2 - 2
+
+
+@pytest.mark.django_db
+class TestClearListingsCommand:
+    """Coverage for the clear_listings management command used to wipe all listing data safely."""
+
+    def test_no_listings_prints_message_and_makes_no_changes(self, capsys):
+        """With an empty table, the command must report that and exit without prompting."""
+        call_command('clear_listings')
+        assert 'No listings found' in capsys.readouterr().out
+
+    def test_declining_confirmation_keeps_data(self, monkeypatch, listing):
+        """Answering anything other than 'yes' at the prompt must leave listings untouched."""
+        monkeypatch.setattr('builtins.input', lambda _: 'no')
+        call_command('clear_listings')
+        assert Listing.objects.filter(pk=listing.pk).exists()
+
+    def test_confirming_prompt_deletes_listing(self, monkeypatch, listing):
+        """Typing 'yes' at the interactive prompt must delete the listing."""
+        monkeypatch.setattr('builtins.input', lambda _: 'yes')
+        call_command('clear_listings')
+        assert not Listing.objects.filter(pk=listing.pk).exists()
+
+    def test_yes_flag_skips_prompt_and_deletes_everything(self, listing, inactive_listing):
+        """The --yes flag must bypass the prompt and remove every listing, active or not."""
+        call_command('clear_listings', yes=True)
+        assert Listing.objects.count() == 0
+
+    def test_cascade_deletes_bookings_reviews_and_view_history(self, lessor_client, tenant_client, listing):
+        """Deleting a listing must cascade to its bookings, reviews and view history."""
+        _, tenant = tenant_client
+        booking = Booking.objects.create(
+            listing=listing,
+            tenant=tenant,
+            start_date=date.today(),
+            end_date=date.today() + timedelta(days=3),
+            status=BookingStatus.CHECKED_IN,
+        )
+        Review.objects.create(listing=listing, author=tenant, booking=booking, rating=5, comment='Great stay')
+        ViewHistory.objects.create(listing=listing, user=tenant)
+
+        call_command('clear_listings', yes=True)
+
+        assert Booking.objects.count() == 0
+        assert Review.objects.count() == 0
+        assert ViewHistory.objects.count() == 0
+
+    def test_removes_photo_files_from_disk(self, settings, tmp_path, lessor_client, listing):
+        """Deleting a listing must also remove its uploaded photo files from MEDIA_ROOT."""
+        settings.MEDIA_ROOT = tmp_path
+        client, _ = lessor_client
+        response = client.post(f'{LISTINGS_URL}{listing.id}/photos/', {'image': make_image_file()})
+        photo = ListingPhoto.objects.get(id=response.data['id'])
+        file_path = tmp_path / photo.image.name
+        assert file_path.is_file()
+
+        call_command('clear_listings', yes=True)
+
+        assert not file_path.is_file()
+
+    def test_does_not_touch_users(self, lessor_client, listing):
+        """Clearing listings must never delete the owning user account."""
+        _, owner = lessor_client
+        call_command('clear_listings', yes=True)
+        assert User.objects.filter(pk=owner.pk).exists()

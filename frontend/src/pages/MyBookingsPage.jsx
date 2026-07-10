@@ -10,6 +10,7 @@ import { ReviewForm } from '@/components/reviews/ReviewForm'
 import { Banner } from '@/components/ui/banner'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/ui/status-badge'
+import { extractApiError } from '@/lib/apiError'
 import { unwrapPage } from '@/lib/pagination'
 
 function BookingRow({ booking }) {
@@ -28,8 +29,7 @@ function BookingRow({ booking }) {
     mutationFn: () => updateBookingStatus(booking.id, 'canceled'),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['myBookings'] }),
     onError: (mutationError) => {
-      const data = mutationError.response?.data
-      setError(data?.detail || data?.non_field_errors?.[0] || 'Could not cancel booking.')
+      setError(extractApiError(mutationError, 'Could not cancel booking.'))
     },
   })
 

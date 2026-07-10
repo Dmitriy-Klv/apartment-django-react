@@ -1,8 +1,9 @@
 import os
+import threading
 from datetime import date, timedelta
 
 import pytest
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, OperationalError, connection, transaction
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.test import APIClient
@@ -133,6 +134,90 @@ class TestBookingCreate:
                 start_date=date.fromisoformat(start),
                 end_date=date.fromisoformat(end),
             )
+
+
+@pytest.mark.django_db(transaction=True)
+class TestBookingConcurrency:
+    """Regression tests for the select_for_update() race-condition fix in create_booking.
+
+    django_db(transaction=True) is required so each thread commits to the real test
+    database instead of sharing pytest's default rollback-only transaction — otherwise
+    the two threads would never see each other's in-progress changes.
+
+    The row lock (select_for_update) only has an effect on backends where
+    connection.features.has_select_for_update is True (MySQL, with MYSQL=True in .env).
+    On SQLite the same invariant (only one of the two bookings ends up in the database)
+    still holds, but SQLite enforces it with its own file-level write lock instead of
+    the Django-level row lock added in the fix — the losing thread there raises
+    OperationalError ("database table is locked") rather than ValidationError, which is
+    why both exception types are treated as "rejected" below.
+    """
+
+    def test_only_one_of_two_concurrent_overlapping_bookings_succeeds(self, tenant_client, tenant_client_2, listing):
+        """Two threads booking the same dates at the same time must not both succeed."""
+        start, end = future_dates()
+        _, tenant = tenant_client
+        _, tenant2 = tenant_client_2
+        outcomes = {}
+
+        def attempt(key, tenant_user):
+            connection.close()
+            try:
+                BookingService.create_booking(
+                    tenant=tenant_user,
+                    listing=listing,
+                    start_date=date.fromisoformat(start),
+                    end_date=date.fromisoformat(end),
+                )
+                outcomes[key] = 'created'
+            except (ValidationError, OperationalError):
+                outcomes[key] = 'rejected'
+            finally:
+                connection.close()
+
+        thread_a = threading.Thread(target=attempt, args=('a', tenant))
+        thread_b = threading.Thread(target=attempt, args=('b', tenant2))
+        thread_a.start()
+        thread_b.start()
+        thread_a.join()
+        thread_b.join()
+
+        assert sorted(outcomes.values()) == ['created', 'rejected']
+        assert Booking.objects.filter(listing=listing, start_date=start, end_date=end).count() == 1
+
+
+@pytest.mark.django_db
+class TestListingBookedDates:
+
+    def test_anonymous_can_view_booked_dates(self, tenant_client, listing):
+        """Anonymous users must be able to fetch booked date ranges for a listing."""
+        client, _ = tenant_client
+        start, end = future_dates()
+        client.post(BOOKINGS_URL, {'listing': listing.id, 'start_date': start, 'end_date': end})
+
+        response = APIClient().get(f'{BOOKINGS_URL}listings/{listing.id}/booked-dates/')
+        assert response.status_code == status.HTTP_200_OK
+        results = results_of(response.data)
+        assert len(results) == 1
+        assert results[0] == {'start_date': start, 'end_date': end}
+        assert 'tenant_email' not in results[0]
+        assert 'id' not in results[0]
+
+    def test_canceled_booking_is_excluded(self, tenant_client, listing):
+        """Canceled and rejected bookings must not block dates on the public calendar."""
+        client, _ = tenant_client
+        start, end = future_dates(start_offset=10)
+        created = client.post(BOOKINGS_URL, {'listing': listing.id, 'start_date': start, 'end_date': end})
+        client.patch(f'{BOOKINGS_URL}{created.data["id"]}/status/', {'status': BookingStatus.CANCELED})
+
+        response = APIClient().get(f'{BOOKINGS_URL}listings/{listing.id}/booked-dates/')
+        assert results_of(response.data) == []
+
+    def test_no_bookings_returns_empty_list(self, listing):
+        """A listing with no active bookings must return an empty list."""
+        response = APIClient().get(f'{BOOKINGS_URL}listings/{listing.id}/booked-dates/')
+        assert response.status_code == status.HTTP_200_OK
+        assert results_of(response.data) == []
 
 
 @pytest.mark.django_db

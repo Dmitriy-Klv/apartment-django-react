@@ -8,6 +8,7 @@ import { PageLayout } from '@/components/layout/PageLayout'
 import { Banner } from '@/components/ui/banner'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/ui/status-badge'
+import { extractApiError } from '@/lib/apiError'
 import { unwrapPage } from '@/lib/pagination'
 
 function LessorBookingRow({ booking }) {
@@ -18,8 +19,7 @@ function LessorBookingRow({ booking }) {
     mutationFn: (status) => updateBookingStatus(booking.id, status),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['lessorBookings'] }),
     onError: (mutationError) => {
-      const data = mutationError.response?.data
-      setError(data?.detail || data?.non_field_errors?.[0] || 'Could not update booking.')
+      setError(extractApiError(mutationError, 'Could not update booking.'))
     },
   })
 

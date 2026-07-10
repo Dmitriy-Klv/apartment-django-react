@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 
+from django.db import transaction
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from apps.bookings.models import Booking, BookingStatus
@@ -17,21 +18,24 @@ class BookingService:
         if listing.owner_id == tenant.id:
             raise ValidationError('You cannot book your own listing.')
 
-        overlapping = Booking.objects.filter(
-            listing=listing,
-            status__in=ACTIVE_STATUSES,
-            start_date__lt=end_date,
-            end_date__gt=start_date,
-        ).exists()
-        if overlapping:
-            raise ValidationError('Listing is already booked for the selected dates.')
+        with transaction.atomic():
+            locked_listing = Listing.objects.select_for_update().get(pk=listing.pk)
 
-        return Booking.objects.create(
-            listing=listing,
-            tenant=tenant,
-            start_date=start_date,
-            end_date=end_date,
-        )
+            overlapping = Booking.objects.filter(
+                listing=locked_listing,
+                status__in=ACTIVE_STATUSES,
+                start_date__lt=end_date,
+                end_date__gt=start_date,
+            ).exists()
+            if overlapping:
+                raise ValidationError('Listing is already booked for the selected dates.')
+
+            return Booking.objects.create(
+                listing=locked_listing,
+                tenant=tenant,
+                start_date=start_date,
+                end_date=end_date,
+            )
 
     @staticmethod
     def cancel_booking(booking: Booking, user) -> Booking:

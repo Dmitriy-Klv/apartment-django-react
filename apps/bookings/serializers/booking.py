@@ -50,6 +50,14 @@ class BookingCreateSerializer(serializers.Serializer):
         return attrs
 
 
+class BookingDateRangeSerializer(serializers.ModelSerializer):
+    """Public date range of a single active booking, used to block dates in the UI."""
+
+    class Meta:
+        model = Booking
+        fields = ['start_date', 'end_date']
+
+
 class BookingStatusSerializer(serializers.Serializer):
     """Validate a booking status transition request."""
 

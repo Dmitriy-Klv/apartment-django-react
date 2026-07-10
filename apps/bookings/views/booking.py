@@ -1,12 +1,17 @@
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
-from rest_framework.permissions import BasePermission, IsAuthenticated
+from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.bookings.models import Booking, BookingStatus
-from apps.bookings.serializers.booking import BookingCreateSerializer, BookingSerializer, BookingStatusSerializer
-from apps.bookings.services.booking import BookingService
+from apps.bookings.serializers.booking import (
+    BookingCreateSerializer,
+    BookingDateRangeSerializer,
+    BookingSerializer,
+    BookingStatusSerializer,
+)
+from apps.bookings.services.booking import ACTIVE_STATUSES, BookingService
 from apps.users.permissions import IsLessor, IsTenant
 
 STATUS_ACTIONS = {
@@ -78,6 +83,21 @@ class BookingStatusUpdateView(APIView):
         action = STATUS_ACTIONS[serializer.validated_data['status']]
         booking = action(booking, request.user)
         return Response(BookingSerializer(booking).data)
+
+
+class ListingBookedDatesView(generics.ListAPIView):
+    """Public date ranges of active bookings for a listing, used to block dates in the UI."""
+
+    serializer_class = BookingDateRangeSerializer
+    permission_classes = [AllowAny]
+    pagination_class = None
+
+    def get_queryset(self):
+        """Return active booking date ranges for the requested listing."""
+        return Booking.objects.filter(
+            listing_id=self.kwargs['listing_id'],
+            status__in=ACTIVE_STATUSES,
+        ).only('start_date', 'end_date').order_by('start_date')
 
 
 class LessorBookingsView(generics.ListAPIView):

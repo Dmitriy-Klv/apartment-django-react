@@ -1,13 +1,14 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-import { createBooking } from '@/api/bookings'
+import { createBooking, getListingBookedDates } from '@/api/bookings'
 import { Banner } from '@/components/ui/banner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { extractApiError } from '@/lib/apiError'
 
 function nightsBetween(start, end) {
   if (!start || !end) {
@@ -15,6 +16,15 @@ function nightsBetween(start, end) {
   }
   const diff = (new Date(end) - new Date(start)) / (1000 * 60 * 60 * 24)
   return diff > 0 ? diff : 0
+}
+
+const EMPTY_RANGES = []
+
+function rangesOverlap(startDate, endDate, bookedRanges) {
+  if (!startDate || !endDate) {
+    return false
+  }
+  return bookedRanges.some((range) => startDate < range.end_date && endDate > range.start_date)
 }
 
 export function BookingForm({ listing }) {
@@ -25,8 +35,15 @@ export function BookingForm({ listing }) {
   const [endDate, setEndDate] = useState('')
   const [error, setError] = useState('')
 
+  const { data: bookedDates } = useQuery({
+    queryKey: ['bookedDates', listing.id],
+    queryFn: () => getListingBookedDates(listing.id),
+  })
+  const bookedRanges = bookedDates ?? EMPTY_RANGES
+
   const nights = nightsBetween(startDate, endDate)
   const estimatedTotal = nights * Number(listing.price)
+  const hasOverlap = useMemo(() => rangesOverlap(startDate, endDate, bookedRanges), [startDate, endDate, bookedRanges])
 
   const mutation = useMutation({
     mutationFn: () => createBooking({ listing: listing.id, start_date: startDate, end_date: endDate }),
@@ -35,8 +52,7 @@ export function BookingForm({ listing }) {
       navigate('/my-bookings')
     },
     onError: (mutationError) => {
-      const data = mutationError.response?.data
-      setError(data?.detail || data?.non_field_errors?.[0] || 'Could not create booking. Please check the dates.')
+      setError(extractApiError(mutationError, 'Could not create booking. Please check the dates.'))
     },
   })
 
@@ -45,6 +61,10 @@ export function BookingForm({ listing }) {
     setError('')
     if (!startDate || !endDate) {
       setError('Please select both check-in and check-out dates.')
+      return
+    }
+    if (hasOverlap) {
+      setError('These dates overlap an existing booking. Please choose different dates.')
       return
     }
     mutation.mutate()
@@ -75,9 +95,12 @@ export function BookingForm({ listing }) {
         </p>
       )}
 
+      {hasOverlap && (
+        <Banner variant="error">These dates overlap an existing booking. Please choose different dates.</Banner>
+      )}
       <Banner variant="error">{error}</Banner>
 
-      <Button type="submit" size="lg" className="w-full rounded-full" disabled={mutation.isPending}>
+      <Button type="submit" size="lg" className="w-full rounded-full" disabled={mutation.isPending || hasOverlap}>
         {mutation.isPending ? <Loader2 className="size-4 animate-spin" /> : 'Request to book'}
       </Button>
     </form>

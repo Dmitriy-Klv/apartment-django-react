@@ -20,6 +20,11 @@ export async function createBooking(data) {
   return response.data
 }
 
+export async function getListingBookedDates(listingId) {
+  const response = await apiClient.get(`/bookings/listings/${listingId}/booked-dates/`)
+  return response.data
+}
+
 export async function updateBookingStatus(id, status) {
   const response = await apiClient.patch(`/bookings/${id}/status/`, { status })
   return response.data

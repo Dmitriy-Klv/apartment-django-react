@@ -7,6 +7,7 @@ import { Banner } from '@/components/ui/banner'
 import { Button } from '@/components/ui/button'
 import { RatingStars } from '@/components/ui/rating-stars'
 import { Textarea } from '@/components/ui/textarea'
+import { extractApiError } from '@/lib/apiError'
 
 export function ReviewForm({ booking, onDone }) {
   const queryClient = useQueryClient()
@@ -21,8 +22,7 @@ export function ReviewForm({ booking, onDone }) {
       onDone?.()
     },
     onError: (mutationError) => {
-      const data = mutationError.response?.data
-      setError(data?.detail || data?.non_field_errors?.[0] || 'Could not submit review.')
+      setError(extractApiError(mutationError, 'Could not submit review.'))
     },
   })
 

@@ -9,8 +9,8 @@ export function HomePage() {
     <div className="mx-auto max-w-6xl px-4">
       <Navbar />
       <Hero />
-      <Features />
       <PopularListings />
+      <Features />
       <Footer />
     </div>
   )

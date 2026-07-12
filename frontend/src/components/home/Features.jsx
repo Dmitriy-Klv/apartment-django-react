@@ -1,4 +1,4 @@
-import { ShieldCheck, Sparkles, Wallet } from 'lucide-react'
+import { History, ShieldCheck, Sparkles } from 'lucide-react'
 
 const FEATURES = [
   {
@@ -7,9 +7,9 @@ const FEATURES = [
     description: 'Every listing belongs to a registered landlord and goes through basic verification before it goes live.',
   },
   {
-    icon: Wallet,
-    title: 'Transparent pricing',
-    description: 'No hidden fees. The price you see for a booking is the price you pay.',
+    icon: History,
+    title: 'Search history that remembers',
+    description: 'Every search and listing you view is saved automatically, so you can always pick up where you left off.',
   },
   {
     icon: Sparkles,

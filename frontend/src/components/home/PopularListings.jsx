@@ -14,7 +14,7 @@ export function PopularListings() {
   }
 
   return (
-    <section className="space-y-6 pb-24">
+    <section className="space-y-6 pt-16 pb-24">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-semibold">Trending right now</h2>
         <Link to="/listings" className="text-sm font-medium underline underline-offset-4">

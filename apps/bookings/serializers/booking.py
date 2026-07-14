@@ -33,7 +33,7 @@ class BookingCreateSerializer(serializers.Serializer):
     """Validate incoming data for creating a booking."""
 
     listing = serializers.PrimaryKeyRelatedField(
-        queryset=Listing.objects.filter(is_active=True, is_deleted=False),
+        queryset=Listing.objects.filter(is_active=True, deleted_at__isnull=True),
     )
     start_date = serializers.DateField()
     end_date = serializers.DateField()

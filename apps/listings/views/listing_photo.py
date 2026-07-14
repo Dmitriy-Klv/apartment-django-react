@@ -17,7 +17,7 @@ class ListingPhotoListCreateView(APIView):
 
     def post(self, request, pk):
         """Validate and attach a new photo, enforcing the per-listing photo limit."""
-        listing = get_object_or_404(Listing, pk=pk, is_deleted=False)
+        listing = get_object_or_404(Listing, pk=pk, deleted_at__isnull=True)
         if listing.owner != request.user:
             return Response({'detail': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
 
@@ -38,7 +38,7 @@ class ListingPhotoDetailView(APIView):
 
     def patch(self, request, pk, photo_id):
         """Mark this photo as the listing's cover photo."""
-        photo = get_object_or_404(ListingPhoto, pk=photo_id, listing_id=pk, listing__is_deleted=False)
+        photo = get_object_or_404(ListingPhoto, pk=photo_id, listing_id=pk, listing__deleted_at__isnull=True)
         if photo.listing.owner != request.user:
             return Response({'detail': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
 
@@ -47,7 +47,7 @@ class ListingPhotoDetailView(APIView):
 
     def delete(self, request, pk, photo_id):
         """Remove the photo from the listing."""
-        photo = get_object_or_404(ListingPhoto, pk=photo_id, listing_id=pk, listing__is_deleted=False)
+        photo = get_object_or_404(ListingPhoto, pk=photo_id, listing_id=pk, listing__deleted_at__isnull=True)
         if photo.listing.owner != request.user:
             return Response({'detail': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
 

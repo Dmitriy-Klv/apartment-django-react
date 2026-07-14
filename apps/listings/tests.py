@@ -7,6 +7,7 @@ from decimal import Decimal
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
+from django.utils import timezone
 from PIL import Image
 from rest_framework import status
 
@@ -283,7 +284,7 @@ class TestListingList:
 
     def test_deleted_listing_hidden(self, api_client, listing):
         """Soft-deleted listings must not appear in public list."""
-        listing.is_deleted = True
+        listing.deleted_at = timezone.now()
         listing.save()
         response = api_client.get(LISTINGS_URL)
         ids = [r['id'] for r in response.data['results']]
@@ -380,7 +381,7 @@ class TestListingDetail:
 
     def test_deleted_listing_returns_404(self, api_client, listing):
         """Soft-deleted listing must return 404 on detail."""
-        listing.is_deleted = True
+        listing.deleted_at = timezone.now()
         listing.save()
         response = api_client.get(f'{LISTINGS_URL}{listing.id}/')
         assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -437,6 +438,15 @@ class TestListingDelete:
         assert response.status_code == status.HTTP_204_NO_CONTENT
         listing.refresh_from_db()
         assert listing.is_deleted is True
+
+    def test_delete_records_deleted_at_timestamp(self, lessor_client, listing):
+        """Soft-deleting a listing must record the moment of deletion, not just a flag."""
+        client, _ = lessor_client
+        before = timezone.now()
+        client.delete(f'{LISTINGS_URL}{listing.id}/')
+        listing.refresh_from_db()
+        assert listing.deleted_at is not None
+        assert listing.deleted_at >= before
 
     def test_deleted_listing_disappears_from_public(self, lessor_client, api_client, listing):
         """After deletion, listing must not appear in public list."""
@@ -589,7 +599,7 @@ class TestSeedDemoDataCommand:
         self._seed()
         assert User.objects.filter(email__iendswith='@seed.example').count() == 2 + 1 + 3 + 1
         assert Listing.objects.count() == 4
-        assert Listing.objects.filter(is_deleted=True).count() == 0
+        assert Listing.objects.filter(deleted_at__isnull=False).count() == 0
 
     def test_creates_known_demo_accounts(self):
         """Command must create fixed-credential demo Lessor and Tenant accounts."""

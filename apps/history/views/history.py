@@ -31,4 +31,4 @@ class PopularListingsView(generics.ListAPIView):
 
     def get_queryset(self):
         """Return active, non-deleted listings sorted by views_count descending."""
-        return Listing.objects.filter(is_active=True, is_deleted=False).prefetch_related('photos').order_by('-views_count')
+        return Listing.objects.filter(is_active=True, deleted_at__isnull=True).prefetch_related('photos').order_by('-views_count')

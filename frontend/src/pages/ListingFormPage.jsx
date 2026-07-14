@@ -101,7 +101,7 @@ export function ListingFormPage() {
           )}
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
           <div className="space-y-1.5">
             <Label htmlFor="title">Title</Label>
             <Input id="title" {...register('title')} />
@@ -146,7 +146,7 @@ export function ListingFormPage() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="price">Price per night (€)</Label>
-              <Input id="price" type="number" min="0" step="0.01" {...register('price')} />
+              <Input id="price" type="number" min="0.01" step="0.01" {...register('price')} />
               {errors.price && <p className="text-xs text-destructive">{errors.price.message}</p>}
             </div>
             <div className="space-y-1.5">

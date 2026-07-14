@@ -33,6 +33,9 @@ function LessorBookingRow({ booking }) {
           <p className="text-sm text-muted-foreground">
             {booking.start_date} → {booking.end_date}
           </p>
+          <p className="text-sm text-muted-foreground">
+            €{booking.total_price} total (€{booking.price_per_night}/night)
+          </p>
           <p className="text-xs text-muted-foreground">Guest: {booking.tenant_email}</p>
         </div>
         <StatusBadge status={booking.status} />

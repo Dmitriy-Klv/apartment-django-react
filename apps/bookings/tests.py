@@ -1,6 +1,7 @@
 import os
 import threading
 from datetime import date, timedelta
+from decimal import Decimal
 
 import pytest
 from django.db import IntegrityError, OperationalError, connection, transaction
@@ -122,6 +123,29 @@ class TestBookingCreate:
         start2, end2 = future_dates(start_offset=10, length=2)
         response = client2.post(BOOKINGS_URL, {'listing': listing.id, 'start_date': start2, 'end_date': end2})
         assert response.status_code == status.HTTP_201_CREATED
+
+    def test_booking_snapshots_listing_price(self, tenant_client, listing):
+        """A booking must store the listing's price at creation time in price_per_night/total_price."""
+        client, _ = tenant_client
+        start, end = future_dates(start_offset=1, length=3)
+        response = client.post(BOOKINGS_URL, {'listing': listing.id, 'start_date': start, 'end_date': end})
+        assert response.status_code == status.HTTP_201_CREATED
+        assert Decimal(response.data['price_per_night']) == Decimal(listing.price)
+        assert Decimal(response.data['total_price']) == Decimal(listing.price) * 3
+
+    def test_booking_price_unaffected_by_later_listing_price_change(self, tenant_client, listing):
+        """Raising the listing price after a booking exists must not change the booking's stored price."""
+        client, _ = tenant_client
+        start, end = future_dates(start_offset=1, length=2)
+        response = client.post(BOOKINGS_URL, {'listing': listing.id, 'start_date': start, 'end_date': end})
+        booking_id = response.data['id']
+        original_total = Decimal(response.data['total_price'])
+
+        listing.price = Decimal(listing.price) + Decimal('500.00')
+        listing.save(update_fields=['price', 'updated_at'])
+
+        booking = Booking.objects.get(pk=booking_id)
+        assert booking.total_price == original_total
 
     def test_cannot_book_own_listing(self, db, lessor_client, listing):
         """A user cannot create a booking on a listing they own themselves."""
@@ -402,7 +426,10 @@ class TestBookingDateConstraint:
         start = date.today() + timedelta(days=5)
         with pytest.raises(IntegrityError):
             with transaction.atomic():
-                Booking.objects.create(listing=listing, tenant=tenant, start_date=start, end_date=start)
+                Booking.objects.create(
+                    listing=listing, tenant=tenant, start_date=start, end_date=start,
+                    price_per_night=listing.price, total_price=listing.price,
+                )
 
     def test_end_date_after_start_date_is_allowed(self, tenant_client, listing):
         """Database must accept a booking where end_date is strictly after start_date."""
@@ -410,6 +437,7 @@ class TestBookingDateConstraint:
         start = date.today() + timedelta(days=5)
         booking = Booking.objects.create(
             listing=listing, tenant=tenant, start_date=start, end_date=start + timedelta(days=1),
+            price_per_night=listing.price, total_price=listing.price,
         )
         assert booking.pk is not None
 
@@ -423,6 +451,7 @@ class TestBookingServiceUnit:
         booking = Booking.objects.create(
             listing=listing, tenant=tenant, start_date=date.today() + timedelta(days=5),
             end_date=date.today() + timedelta(days=8),
+            price_per_night=listing.price, total_price=Decimal(listing.price) * 3,
         )
         _, other_lessor = lessor_client_2
         with pytest.raises(PermissionDenied):
@@ -438,5 +467,6 @@ class TestBookingModel:
         start = date.today() + timedelta(days=5)
         booking = Booking.objects.create(
             listing=listing, tenant=tenant, start_date=start, end_date=start + timedelta(days=2),
+            price_per_night=listing.price, total_price=Decimal(listing.price) * 2,
         )
         assert str(booking) == f'{tenant} — {listing} ({booking.start_date}/{booking.end_date})'

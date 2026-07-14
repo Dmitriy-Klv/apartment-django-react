@@ -43,6 +43,9 @@ function BookingRow({ booking }) {
           <p className="text-sm text-muted-foreground">
             {booking.start_date} → {booking.end_date}
           </p>
+          <p className="text-sm text-muted-foreground">
+            €{booking.total_price} total (€{booking.price_per_night}/night)
+          </p>
         </div>
         <StatusBadge status={booking.status} />
       </div>

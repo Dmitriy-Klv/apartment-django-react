@@ -720,6 +720,8 @@ class TestClearListingsCommand:
             tenant=tenant,
             start_date=date.today(),
             end_date=date.today() + timedelta(days=3),
+            price_per_night=listing.price,
+            total_price=Decimal(listing.price) * 3,
             status=BookingStatus.CHECKED_IN,
         )
         Review.objects.create(listing=listing, author=tenant, booking=booking, rating=5, comment='Great stay')

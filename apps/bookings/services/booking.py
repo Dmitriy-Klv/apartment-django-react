@@ -30,11 +30,14 @@ class BookingService:
             if overlapping:
                 raise ValidationError('Listing is already booked for the selected dates.')
 
+            nights = (end_date - start_date).days
             return Booking.objects.create(
                 listing=locked_listing,
                 tenant=tenant,
                 start_date=start_date,
                 end_date=end_date,
+                price_per_night=locked_listing.price,
+                total_price=locked_listing.price * nights,
             )
 
     @staticmethod

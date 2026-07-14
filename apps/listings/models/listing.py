@@ -1,4 +1,7 @@
+from decimal import Decimal
+
 from django.conf import settings
+from django.core.validators import MinValueValidator
 from django.db import models
 
 
@@ -21,8 +24,12 @@ class Listing(models.Model):
     city = models.CharField(max_length=100)
     district = models.CharField(max_length=100, blank=True)
     postal_code = models.CharField(max_length=10, blank=True)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    rooms = models.PositiveIntegerField()
+    price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'))],
+    )
+    rooms = models.PositiveIntegerField(validators=[MinValueValidator(1)])
     property_type = models.CharField(max_length=20, choices=PropertyType.choices)
     is_active = models.BooleanField(default=True)
     is_deleted = models.BooleanField(default=False)

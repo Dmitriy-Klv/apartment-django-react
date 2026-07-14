@@ -103,6 +103,27 @@ class TestListingCreate:
         response = client.post(LISTINGS_URL, {})
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    def test_zero_price_400(self, lessor_client, listing_payload):
+        """A price of zero must be rejected with 400."""
+        client, _ = lessor_client
+        response = client.post(LISTINGS_URL, {**listing_payload, 'price': '0'})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'price' in response.data
+
+    def test_negative_price_400(self, lessor_client, listing_payload):
+        """A negative price must be rejected with 400."""
+        client, _ = lessor_client
+        response = client.post(LISTINGS_URL, {**listing_payload, 'price': '-100.00'})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'price' in response.data
+
+    def test_zero_rooms_400(self, lessor_client, listing_payload):
+        """A room count of zero must be rejected with 400."""
+        client, _ = lessor_client
+        response = client.post(LISTINGS_URL, {**listing_payload, 'rooms': 0})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'rooms' in response.data
+
     def test_create_persists_to_db(self, lessor_client, listing_payload):
         """Successful creation must save the listing to the database."""
         client, _ = lessor_client

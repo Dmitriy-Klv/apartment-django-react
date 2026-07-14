@@ -5,6 +5,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from apps.users.models import User, UserRole
+from apps.users.serializers.user import UserSerializer
 
 REGISTER_URL = '/api/v1/auth/register/'
 LOGIN_URL = '/api/v1/auth/login/'
@@ -316,3 +317,26 @@ class TestUserModel:
     def test_str_representation(self, tenant_user):
         """String representation of a user must be its email."""
         assert str(tenant_user) == tenant_user.email
+
+
+@pytest.mark.django_db
+class TestUserSerializerRoleImmutable:
+
+    def test_role_is_read_only_on_update(self, tenant_user):
+        """Passing a different role through the serializer must not change the stored role."""
+        serializer = UserSerializer(tenant_user, data={'role': UserRole.LESSOR}, partial=True)
+        assert serializer.is_valid()
+        updated = serializer.save()
+        assert updated.role == UserRole.TENANT
+
+    def test_email_and_username_are_read_only_on_update(self, tenant_user):
+        """Passing a different email/username through the serializer must not change the stored values."""
+        original_email = tenant_user.email
+        original_username = tenant_user.username
+        serializer = UserSerializer(
+            tenant_user, data={'email': 'someone-else@example.com', 'username': 'someone-else'}, partial=True,
+        )
+        assert serializer.is_valid()
+        updated = serializer.save()
+        assert updated.email == original_email
+        assert updated.username == original_username

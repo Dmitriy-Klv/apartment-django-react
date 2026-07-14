@@ -32,7 +32,7 @@ class Listing(models.Model):
     rooms = models.PositiveIntegerField(validators=[MinValueValidator(1)])
     property_type = models.CharField(max_length=20, choices=PropertyType.choices)
     is_active = models.BooleanField(default=True)
-    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
     views_count = models.PositiveIntegerField(default=0)
     average_rating = models.DecimalField(max_digits=3, decimal_places=2, default=0)
     reviews_count = models.PositiveIntegerField(default=0)
@@ -46,3 +46,8 @@ class Listing(models.Model):
     def __str__(self):
         """Return listing title."""
         return self.title
+
+    @property
+    def is_deleted(self):
+        """Return whether the listing has been soft-deleted."""
+        return self.deleted_at is not None

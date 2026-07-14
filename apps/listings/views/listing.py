@@ -31,7 +31,7 @@ class ListingListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         """Return active, non-deleted listings."""
-        return Listing.objects.filter(is_active=True, is_deleted=False).select_related('owner').prefetch_related('photos')
+        return Listing.objects.filter(is_active=True, deleted_at__isnull=True).select_related('owner').prefetch_related('photos')
 
     def get_serializer_class(self):
         """Use create serializer for POST, full serializer for GET."""
@@ -72,7 +72,7 @@ class ListingDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         """Return non-deleted listings for detail, update, and delete."""
-        return Listing.objects.filter(is_deleted=False).select_related('owner').prefetch_related('photos')
+        return Listing.objects.filter(deleted_at__isnull=True).select_related('owner').prefetch_related('photos')
 
     def get_serializer_class(self):
         """Use create serializer for write operations, full serializer for read."""
@@ -119,7 +119,7 @@ class MyListingsView(generics.ListAPIView):
     def get_queryset(self):
         """Return only listings owned by the current user."""
         return Listing.objects.filter(
-            owner=self.request.user, is_deleted=False
+            owner=self.request.user, deleted_at__isnull=True
         ).select_related('owner').prefetch_related('photos')
 
 
@@ -130,7 +130,7 @@ class ListingToggleView(APIView):
 
     def patch(self, request, pk):
         """Flip is_active and return the updated listing."""
-        listing = get_object_or_404(Listing, pk=pk, is_deleted=False)
+        listing = get_object_or_404(Listing, pk=pk, deleted_at__isnull=True)
         if listing.owner != request.user:
             return Response({'detail': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
         listing = ListingService.toggle_active(listing)

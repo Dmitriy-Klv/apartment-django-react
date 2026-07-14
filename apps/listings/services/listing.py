@@ -1,3 +1,5 @@
+from django.utils import timezone
+
 from apps.listings.models import Listing
 
 
@@ -19,8 +21,8 @@ class ListingService:
     @staticmethod
     def delete_listing(listing: Listing) -> None:
         """Soft-delete a listing so bookings and reviews remain intact."""
-        listing.is_deleted = True
-        listing.save(update_fields=['is_deleted', 'updated_at'])
+        listing.deleted_at = timezone.now()
+        listing.save(update_fields=['deleted_at', 'updated_at'])
 
     @staticmethod
     def toggle_active(listing: Listing) -> Listing:

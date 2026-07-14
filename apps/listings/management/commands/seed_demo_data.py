@@ -183,11 +183,14 @@ class Command(BaseCommand):
         bookings = []
         for listing in listings:
             for start, end in self._generate_booking_windows(random.randint(1, 3)):
+                nights = (end - start).days
                 bookings.append(Booking.objects.create(
                     listing=listing,
                     tenant=random.choice(tenants),
                     start_date=start,
                     end_date=end,
+                    price_per_night=listing.price,
+                    total_price=listing.price * nights,
                     status=self._weighted_status(is_past=end <= date.today()),
                 ))
         return bookings

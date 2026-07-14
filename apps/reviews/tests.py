@@ -1,5 +1,6 @@
 import os
 from datetime import date, timedelta
+from decimal import Decimal
 
 import pytest
 from django.db import IntegrityError, transaction
@@ -53,6 +54,7 @@ def checked_in_booking(listing, tenant, offset=10):
     start = date.today() - timedelta(days=offset)
     return Booking.objects.create(
         listing=listing, tenant=tenant, start_date=start, end_date=start + timedelta(days=3),
+        price_per_night=listing.price, total_price=Decimal(listing.price) * 3,
         status=BookingStatus.CHECKED_IN,
     )
 
@@ -75,6 +77,7 @@ class TestReviewCreateAPI:
         booking = Booking.objects.create(
             listing=listing, tenant=tenant,
             start_date=date.today() + timedelta(days=5), end_date=date.today() + timedelta(days=8),
+            price_per_night=listing.price, total_price=Decimal(listing.price) * 3,
         )
         response = client.post(REVIEWS_URL, {'booking': booking.id, 'rating': 5, 'comment': 'Too early'})
         assert response.status_code == status.HTTP_400_BAD_REQUEST

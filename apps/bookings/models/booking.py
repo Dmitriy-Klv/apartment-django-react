@@ -1,4 +1,7 @@
+from decimal import Decimal
+
 from django.conf import settings
+from django.core.validators import MinValueValidator
 from django.db import models
 
 
@@ -23,6 +26,16 @@ class Booking(models.Model):
     )
     start_date = models.DateField()
     end_date = models.DateField()
+    price_per_night = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'))],
+    )
+    total_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'))],
+    )
     status = models.CharField(
         max_length=20,
         choices=BookingStatus.choices,

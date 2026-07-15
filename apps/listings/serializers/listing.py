@@ -7,20 +7,20 @@ from apps.listings.serializers.listing_photo import ListingPhotoSerializer
 class ListingSerializer(serializers.ModelSerializer):
     """Full listing representation for read operations."""
 
-    owner_email = serializers.EmailField(source='owner.email', read_only=True)
+    owner_username = serializers.CharField(source='owner.username', read_only=True)
     photos = ListingPhotoSerializer(many=True, read_only=True)
     cover_image = serializers.SerializerMethodField()
 
     class Meta:
         model = Listing
         fields = [
-            'id', 'owner', 'owner_email', 'title', 'description',
+            'id', 'owner', 'owner_username', 'title', 'description',
             'city', 'district', 'postal_code', 'price', 'rooms',
             'property_type', 'photos', 'cover_image', 'is_active', 'views_count',
             'average_rating', 'reviews_count', 'created_at', 'updated_at',
         ]
         read_only_fields = [
-            'id', 'owner', 'owner_email', 'photos', 'cover_image', 'views_count',
+            'id', 'owner', 'owner_username', 'photos', 'cover_image', 'views_count',
             'average_rating', 'reviews_count', 'created_at', 'updated_at',
         ]
 

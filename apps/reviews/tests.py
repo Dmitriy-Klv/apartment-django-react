@@ -141,6 +141,17 @@ class TestReviewReadAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data['comment'] == 'Nice place'
 
+    def test_review_detail_does_not_expose_author_email(self, tenant_client, api_client, listing):
+        """The review author's email address must never appear in the public response."""
+        client, tenant = tenant_client
+        booking = checked_in_booking(listing, tenant)
+        created = client.post(REVIEWS_URL, {'booking': booking.id, 'rating': 4, 'comment': 'Nice place'})
+
+        response = api_client.get(f'{REVIEWS_URL}{created.data["id"]}/')
+        assert 'author_email' not in response.data
+        assert response.data['author_username'] == tenant.username
+        assert tenant.email not in response.content.decode()
+
 
 @pytest.mark.django_db
 class TestReviewUniqueness:

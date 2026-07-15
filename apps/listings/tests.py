@@ -275,6 +275,12 @@ class TestListingList:
         assert response.status_code == status.HTTP_200_OK
         assert response.data['count'] >= 1
 
+    def test_public_list_does_not_expose_owner_email(self, api_client, listing):
+        """The owner's email address must never appear in the public listing feed."""
+        response = api_client.get(LISTINGS_URL)
+        assert 'owner_email' not in response.data['results'][0]
+        assert listing.owner.email not in response.content.decode()
+
     def test_only_active_listings_visible(self, api_client, listing, inactive_listing):
         """Inactive listings must not appear in public list."""
         response = api_client.get(LISTINGS_URL)
@@ -390,6 +396,13 @@ class TestListingDetail:
         """Non-existent ID must return 404."""
         response = api_client.get(f'{LISTINGS_URL}99999/')
         assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_public_detail_does_not_expose_owner_email(self, api_client, listing):
+        """The owner's email address must never appear in the public response."""
+        response = api_client.get(f'{LISTINGS_URL}{listing.id}/')
+        assert 'owner_email' not in response.data
+        assert response.data['owner_username'] == listing.owner.username
+        assert listing.owner.email not in response.content.decode()
 
 
 @pytest.mark.django_db

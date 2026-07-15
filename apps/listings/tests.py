@@ -374,6 +374,15 @@ class TestListingList:
         prices = [Decimal(r['price']) for r in response.data['results']]
         assert prices == sorted(prices, reverse=True)
 
+    def test_page_size_is_twelve(self, api_client, db, lessor_client, listing_payload):
+        """A full page must return exactly 12 listings, filling the 2- and 3-column grid evenly."""
+        _, user = lessor_client
+        for i in range(15):
+            Listing.objects.create(owner=user, **{**listing_payload, 'title': f'Listing {i}'})
+        response = api_client.get(LISTINGS_URL)
+        assert len(response.data['results']) == 12
+        assert response.data['next'] is not None
+
 
 @pytest.mark.django_db
 class TestListingDetail:

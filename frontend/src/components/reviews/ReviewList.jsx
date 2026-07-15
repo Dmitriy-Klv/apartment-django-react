@@ -15,6 +15,7 @@ export function ReviewList({ reviews }) {
               {new Date(review.created_at).toLocaleDateString('en-GB')}
             </span>
           </div>
+          <p className="text-sm font-medium">{review.author_username}</p>
           <p className="text-sm leading-relaxed">{review.comment}</p>
         </div>
       ))}

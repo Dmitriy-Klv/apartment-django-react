@@ -18,7 +18,7 @@ class ListingPhotoSerializer(serializers.ModelSerializer):
 class ListingPhotoUploadSerializer(serializers.Serializer):
     """Validate an incoming photo upload."""
 
-    image = serializers.ImageField()
+    image = serializers.ImageField(help_text='JPEG, PNG, or WebP, up to 5 MB.')
 
     def validate_image(self, value):
         """Reject images that are too large or not an allowed format."""

@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
 from rest_framework.response import Response
@@ -12,6 +13,7 @@ from apps.bookings.serializers.booking import (
     BookingStatusSerializer,
 )
 from apps.bookings.services.booking import ACTIVE_STATUSES, BookingService
+from apps.common.serializers import ErrorResponseSerializer
 from apps.users.permissions import IsLessor, IsTenant
 
 STATUS_ACTIONS = {
@@ -30,6 +32,23 @@ class IsBookingParticipant(BasePermission):
         return obj.tenant_id == request.user.id or obj.listing.owner_id == request.user.id
 
 
+@extend_schema_view(
+    list=extend_schema(
+        tags=['Bookings'],
+        summary="List the current tenant's bookings",
+        description='Return all bookings made by the authenticated tenant.',
+    ),
+    create=extend_schema(
+        tags=['Bookings'],
+        summary='Create a booking (tenant only)',
+        request=BookingCreateSerializer,
+        responses={
+            201: BookingSerializer,
+            400: OpenApiResponse(description='Validation error: invalid dates or overlapping booking.'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Only tenants may create bookings.'),
+        },
+    ),
+)
 class BookingListCreateView(generics.ListCreateAPIView):
     """List the authenticated tenant's bookings and create new ones."""
 
@@ -37,6 +56,8 @@ class BookingListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         """Return bookings made by the authenticated tenant."""
+        if getattr(self, 'swagger_fake_view', False):
+            return Booking.objects.none()
         return Booking.objects.filter(tenant=self.request.user).select_related('listing', 'tenant')
 
     def get_permissions(self):
@@ -58,6 +79,18 @@ class BookingListCreateView(generics.ListCreateAPIView):
         return Response(BookingSerializer(booking).data, status=status.HTTP_201_CREATED)
 
 
+@extend_schema_view(
+    retrieve=extend_schema(
+        tags=['Bookings'],
+        summary='Get booking details',
+        description='Retrieve a single booking; visible only to its tenant or the listing owner.',
+        responses={
+            200: BookingSerializer,
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Not a participant of this booking.'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Booking not found.'),
+        },
+    ),
+)
 class BookingDetailView(generics.RetrieveAPIView):
     """Retrieve a single booking visible to its tenant or the listing owner."""
 
@@ -74,6 +107,21 @@ class BookingStatusUpdateView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        tags=['Bookings'],
+        summary='Change a booking status',
+        description=(
+            'Transition a booking to confirmed, rejected, canceled, or checked-in. '
+            'Each transition is restricted to the appropriate participant (lessor confirms/rejects/checks in, tenant cancels).'
+        ),
+        request=BookingStatusSerializer,
+        responses={
+            200: BookingSerializer,
+            400: OpenApiResponse(description='Validation error: invalid status or illegal transition.'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Not permitted to perform this transition.'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Booking not found.'),
+        },
+    )
     def patch(self, request, pk):
         """Validate the requested status and delegate the transition to the service."""
         booking = get_object_or_404(Booking.objects.select_related('listing', 'tenant'), pk=pk)
@@ -85,6 +133,13 @@ class BookingStatusUpdateView(APIView):
         return Response(BookingSerializer(booking).data)
 
 
+@extend_schema_view(
+    list=extend_schema(
+        tags=['Bookings'],
+        summary='Get booked date ranges for a listing',
+        description='Public, PII-free date ranges of active bookings for a listing, used to block dates in the UI calendar.',
+    ),
+)
 class ListingBookedDatesView(generics.ListAPIView):
     """Public date ranges of active bookings for a listing, used to block dates in the UI."""
 
@@ -94,12 +149,21 @@ class ListingBookedDatesView(generics.ListAPIView):
 
     def get_queryset(self):
         """Return active booking date ranges for the requested listing."""
+        if getattr(self, 'swagger_fake_view', False):
+            return Booking.objects.none()
         return Booking.objects.filter(
             listing_id=self.kwargs['listing_id'],
             status__in=ACTIVE_STATUSES,
         ).only('start_date', 'end_date').order_by('start_date')
 
 
+@extend_schema_view(
+    list=extend_schema(
+        tags=['Bookings'],
+        summary="List bookings on the current lessor's listings",
+        description="Return all bookings made on any listing owned by the authenticated lessor.",
+    ),
+)
 class LessorBookingsView(generics.ListAPIView):
     """List all bookings made on the authenticated lessor's listings."""
 
@@ -108,4 +172,6 @@ class LessorBookingsView(generics.ListAPIView):
 
     def get_queryset(self):
         """Return bookings for listings owned by the current lessor."""
+        if getattr(self, 'swagger_fake_view', False):
+            return Booking.objects.none()
         return Booking.objects.filter(listing__owner=self.request.user).select_related('listing', 'tenant')

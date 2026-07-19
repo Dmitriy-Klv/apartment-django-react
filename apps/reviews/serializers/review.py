@@ -22,6 +22,9 @@ class ReviewSerializer(serializers.ModelSerializer):
 class ReviewCreateSerializer(serializers.Serializer):
     """Validate incoming data for creating a review."""
 
-    booking = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all())
+    booking = serializers.PrimaryKeyRelatedField(
+        queryset=Booking.objects.all(),
+        help_text='ID of a checked-in booking belonging to the requesting tenant; each booking can be reviewed only once.',
+    )
     rating = serializers.IntegerField(min_value=1, max_value=5)
     comment = serializers.CharField()

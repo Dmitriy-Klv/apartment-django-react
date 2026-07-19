@@ -1,4 +1,5 @@
 from django.db.models import Sum
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics
 from rest_framework.permissions import AllowAny
 
@@ -8,6 +9,13 @@ from apps.listings.models import Listing
 from apps.listings.serializers.listing import ListingSerializer
 
 
+@extend_schema_view(
+    list=extend_schema(
+        tags=['History'],
+        summary='List popular search keywords',
+        description='Publicly aggregated search keywords, ranked by total popularity across all users.',
+    ),
+)
 class PopularSearchesView(generics.ListAPIView):
     """Return search keywords ordered by total popularity across all users."""
 
@@ -23,6 +31,13 @@ class PopularSearchesView(generics.ListAPIView):
         )
 
 
+@extend_schema_view(
+    list=extend_schema(
+        tags=['History'],
+        summary='List popular listings',
+        description='Publicly list active listings ordered by view count, descending.',
+    ),
+)
 class PopularListingsView(generics.ListAPIView):
     """Return active listings ordered by view count."""
 

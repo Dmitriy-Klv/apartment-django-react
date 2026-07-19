@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.listings.models import Listing
@@ -7,9 +8,9 @@ from apps.listings.serializers.listing_photo import ListingPhotoSerializer
 class ListingSerializer(serializers.ModelSerializer):
     """Full listing representation for read operations."""
 
-    owner_username = serializers.CharField(source='owner.username', read_only=True)
-    photos = ListingPhotoSerializer(many=True, read_only=True)
-    cover_image = serializers.SerializerMethodField()
+    owner_username = serializers.CharField(source='owner.username', read_only=True, help_text="The listing owner's public display name.")
+    photos = ListingPhotoSerializer(many=True, read_only=True, help_text='All photos uploaded for this listing.')
+    cover_image = serializers.SerializerMethodField(help_text='Absolute URL of the primary photo, or the first uploaded photo if none is marked primary. Null if no photos exist.')
 
     class Meta:
         model = Listing
@@ -24,6 +25,7 @@ class ListingSerializer(serializers.ModelSerializer):
             'average_rating', 'reviews_count', 'created_at', 'updated_at',
         ]
 
+    @extend_schema_field(serializers.URLField(allow_null=True))
     def get_cover_image(self, obj):
         """Return the URL of the primary photo, falling back to the first uploaded photo."""
         photo = next((p for p in obj.photos.all() if p.is_primary), None) or next(iter(obj.photos.all()), None)

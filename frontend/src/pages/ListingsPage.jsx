@@ -76,6 +76,11 @@ export function ListingsPage() {
     setSearchParams({})
   }
 
+  function handlePopularSearchSelect(keyword) {
+    setDraft((prev) => ({ ...prev, search: keyword }))
+    updateParams({ search: keyword })
+  }
+
   function handleOrderingChange(event) {
     const params = new URLSearchParams(searchParams)
     params.set('ordering', event.target.value)
@@ -100,6 +105,7 @@ export function ListingsPage() {
           onChange={(key, value) => setDraft((prev) => ({ ...prev, [key]: value }))}
           onSubmit={() => updateParams(draft)}
           onReset={handleReset}
+          onPopularSearchSelect={handlePopularSearchSelect}
         />
 
         <div className="flex items-center justify-between">

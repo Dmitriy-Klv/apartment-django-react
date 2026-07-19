@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { BedDouble, Loader2, MapPin, Pencil, Star, ToggleLeft, ToggleRight, Trash2 } from 'lucide-react'
+import { BedDouble, Eye, Loader2, MapPin, Pencil, Star, ToggleLeft, ToggleRight, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
@@ -117,6 +117,10 @@ export function ListingDetailPage() {
                   {listing.reviews_count === 1 ? '' : 's'})
                 </span>
               )}
+              <span className="flex items-center gap-1">
+                <Eye className="size-4" />
+                {listing.views_count} view{Number(listing.views_count) === 1 ? '' : 's'}
+              </span>
             </div>
           </div>
 

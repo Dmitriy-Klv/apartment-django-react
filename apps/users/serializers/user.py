@@ -8,8 +8,8 @@ class RegisterSerializer(serializers.Serializer):
 
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True, min_length=8)
-    username = serializers.CharField(max_length=150)
-    role = serializers.ChoiceField(choices=UserRole.choices)
+    username = serializers.CharField(max_length=150, help_text='Public display name, shown on listings and reviews instead of the email.')
+    role = serializers.ChoiceField(choices=UserRole.choices, help_text='Account role: tenant (books listings) or lessor (creates listings).')
 
     def validate_email(self, value):
         """Ensure the email address is not already registered."""
@@ -42,7 +42,7 @@ class LogoutSerializer(serializers.Serializer):
 class DeleteAccountSerializer(serializers.Serializer):
     """Validate the password confirmation required to delete an account."""
 
-    password = serializers.CharField(write_only=True)
+    password = serializers.CharField(write_only=True, help_text="The account's current password, required to confirm deletion.")
 
     def validate_password(self, value):
         """Ensure the password matches the authenticated user's current password."""

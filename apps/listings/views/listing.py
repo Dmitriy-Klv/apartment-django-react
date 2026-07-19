@@ -1,9 +1,11 @@
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.common.serializers import ErrorResponseSerializer
 from apps.history.services.search_history import SearchHistoryService
 from apps.history.services.view_history import ViewHistoryService
 from apps.listings.filters.listing import ListingFilter
@@ -21,6 +23,23 @@ class IsListingOwner(BasePermission):
         return obj.owner == request.user
 
 
+@extend_schema_view(
+    list=extend_schema(
+        tags=['Listings'],
+        summary='List active listings',
+        description='Public catalog of active listings. Supports filtering (price, rooms, city, district, property type), free-text search, and ordering.',
+    ),
+    create=extend_schema(
+        tags=['Listings'],
+        summary='Create a listing (lessor only)',
+        request=ListingCreateSerializer,
+        responses={
+            201: ListingSerializer,
+            400: OpenApiResponse(description='Validation error: field-specific messages.'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Only lessors may create listings.'),
+        },
+    ),
+)
 class ListingListCreateView(generics.ListCreateAPIView):
     """Public listing of active objects; creation restricted to Lessor role."""
 
@@ -67,6 +86,48 @@ class ListingListCreateView(generics.ListCreateAPIView):
         )
 
 
+@extend_schema_view(
+    retrieve=extend_schema(
+        tags=['Listings'],
+        summary='Get listing details',
+        description='Publicly retrieve any non-deleted listing; also records a view in the history.',
+        responses={
+            200: ListingSerializer,
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Listing not found.'),
+        },
+    ),
+    update=extend_schema(
+        tags=['Listings'],
+        summary='Replace a listing (owner only)',
+        request=ListingCreateSerializer,
+        responses={
+            200: ListingSerializer,
+            400: OpenApiResponse(description='Validation error: field-specific messages.'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Only the owning lessor may update this listing.'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Listing not found.'),
+        },
+    ),
+    partial_update=extend_schema(
+        tags=['Listings'],
+        summary='Update a listing (owner only)',
+        request=ListingCreateSerializer,
+        responses={
+            200: ListingSerializer,
+            400: OpenApiResponse(description='Validation error: field-specific messages.'),
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Only the owning lessor may update this listing.'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Listing not found.'),
+        },
+    ),
+    destroy=extend_schema(
+        tags=['Listings'],
+        summary='Soft-delete a listing (owner only)',
+        responses={
+            204: None,
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Only the owning lessor may delete this listing.'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Listing not found.'),
+        },
+    ),
+)
 class ListingDetailView(generics.RetrieveUpdateDestroyAPIView):
     """Retrieve any non-deleted listing publicly; write requires ownership."""
 
@@ -110,6 +171,13 @@ class ListingDetailView(generics.RetrieveUpdateDestroyAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@extend_schema_view(
+    list=extend_schema(
+        tags=['Listings'],
+        summary="List the current lessor's listings",
+        description='Return all non-deleted listings (active and inactive) owned by the authenticated lessor.',
+    ),
+)
 class MyListingsView(generics.ListAPIView):
     """Return all non-deleted listings belonging to the authenticated lessor."""
 
@@ -118,6 +186,8 @@ class MyListingsView(generics.ListAPIView):
 
     def get_queryset(self):
         """Return only listings owned by the current user."""
+        if getattr(self, 'swagger_fake_view', False):
+            return Listing.objects.none()
         return Listing.objects.filter(
             owner=self.request.user, deleted_at__isnull=True
         ).select_related('owner').prefetch_related('photos')
@@ -128,6 +198,16 @@ class ListingToggleView(APIView):
 
     permission_classes = [IsAuthenticated, IsLessor]
 
+    @extend_schema(
+        tags=['Listings'],
+        summary='Toggle a listing active/inactive (owner only)',
+        request=None,
+        responses={
+            200: ListingSerializer,
+            403: OpenApiResponse(response=ErrorResponseSerializer, description='Only the owning lessor may toggle this listing.'),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description='Listing not found.'),
+        },
+    )
     def patch(self, request, pk):
         """Flip is_active and return the updated listing."""
         listing = get_object_or_404(Listing, pk=pk, deleted_at__isnull=True)

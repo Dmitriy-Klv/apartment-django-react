@@ -131,6 +131,20 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'REST API for apartment rental platform in Germany',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
+    'SORT_OPERATIONS': False,
+    'SWAGGER_UI_SETTINGS': {
+        'persistAuthorization': True,
+        'deepLinking': True,
+    },
+    'TAGS': [
+        {'name': 'Auth', 'description': 'Registration, login, and account management.'},
+        {'name': 'Listings', 'description': 'Apartment listings: browsing, filtering, and management by lessors.'},
+        {'name': 'Listing Photos', 'description': 'Photo gallery management for a listing.'},
+        {'name': 'Bookings', 'description': 'Booking lifecycle: creation, status transitions, and availability.'},
+        {'name': 'Reviews', 'description': 'Tenant reviews and ratings for listings.'},
+        {'name': 'History', 'description': 'Search and view history, popularity rankings.'},
+    ],
 }
 
 LANGUAGE_CODE = 'en-us'

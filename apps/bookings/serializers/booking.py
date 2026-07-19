@@ -17,7 +17,7 @@ class BookingSerializer(serializers.ModelSerializer):
     """Full booking representation for read operations."""
 
     listing_title = serializers.CharField(source='listing.title', read_only=True)
-    tenant_email = serializers.EmailField(source='tenant.email', read_only=True)
+    tenant_email = serializers.EmailField(source='tenant.email', read_only=True, help_text='Only visible to the tenant and the listing owner; never exposed on public endpoints.')
 
     class Meta:
         model = Booking

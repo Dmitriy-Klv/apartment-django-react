@@ -1,4 +1,4 @@
-import { BedDouble, MapPin, Star } from 'lucide-react'
+import { BedDouble, Eye, MapPin, Star } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { ListingImage } from '@/components/listings/ListingImage'
@@ -21,12 +21,18 @@ export function ListingCard({ listing }) {
       <div className="space-y-2 p-4">
         <div className="flex items-start justify-between gap-2">
           <h3 className="line-clamp-1 font-semibold">{listing.title}</h3>
-          {Number(listing.reviews_count) > 0 && (
-            <span className="flex shrink-0 items-center gap-1 text-sm text-muted-foreground">
-              <Star className="size-3.5 fill-accent text-accent" />
-              {Number(listing.average_rating).toFixed(1)}
+          <div className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground">
+            {Number(listing.reviews_count) > 0 && (
+              <span className="flex items-center gap-1">
+                <Star className="size-3.5 fill-accent text-accent" />
+                {Number(listing.average_rating).toFixed(1)}
+              </span>
+            )}
+            <span className="flex items-center gap-1">
+              <Eye className="size-3.5" />
+              {listing.views_count}
             </span>
-          )}
+          </div>
         </div>
 
         <p className="flex items-center gap-1 text-sm text-muted-foreground">

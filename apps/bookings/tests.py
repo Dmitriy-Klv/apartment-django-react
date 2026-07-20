@@ -237,6 +237,30 @@ class TestListingBookedDates:
         response = APIClient().get(f'{BOOKINGS_URL}listings/{listing.id}/booked-dates/')
         assert results_of(response.data) == []
 
+    def test_rejected_booking_is_excluded(self, tenant_client, lessor_client, listing):
+        """A rejected booking must immediately free its dates on the public calendar."""
+        client, _ = tenant_client
+        start, end = future_dates(start_offset=10)
+        created = client.post(BOOKINGS_URL, {'listing': listing.id, 'start_date': start, 'end_date': end})
+        lessor, _ = lessor_client
+        lessor.patch(f'{BOOKINGS_URL}{created.data["id"]}/status/', {'status': BookingStatus.REJECTED})
+
+        response = APIClient().get(f'{BOOKINGS_URL}listings/{listing.id}/booked-dates/')
+        assert results_of(response.data) == []
+
+    def test_confirmed_booking_still_blocks_dates(self, tenant_client, lessor_client, listing):
+        """A confirmed booking must continue to block its dates on the public calendar."""
+        client, _ = tenant_client
+        start, end = future_dates(start_offset=10)
+        created = client.post(BOOKINGS_URL, {'listing': listing.id, 'start_date': start, 'end_date': end})
+        lessor, _ = lessor_client
+        lessor.patch(f'{BOOKINGS_URL}{created.data["id"]}/status/', {'status': BookingStatus.CONFIRMED})
+
+        response = APIClient().get(f'{BOOKINGS_URL}listings/{listing.id}/booked-dates/')
+        results = results_of(response.data)
+        assert len(results) == 1
+        assert results[0] == {'start_date': start, 'end_date': end}
+
     def test_no_bookings_returns_empty_list(self, listing):
         """A listing with no active bookings must return an empty list."""
         response = APIClient().get(f'{BOOKINGS_URL}listings/{listing.id}/booked-dates/')
@@ -347,6 +371,26 @@ class TestBookingStatusUpdate:
         other_lessor, _ = lessor_client_2
         response = other_lessor.patch(f'{BOOKINGS_URL}{booking_id}/status/', {'status': BookingStatus.CONFIRMED})
         assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_other_lessor_cannot_reject_403(self, tenant_client, lessor_client_2, listing):
+        """A lessor who does not own the listing must not reject the booking."""
+        booking_id = self._create_booking(tenant_client[0], listing.id)
+        other_lessor, _ = lessor_client_2
+        response = other_lessor.patch(f'{BOOKINGS_URL}{booking_id}/status/', {'status': BookingStatus.REJECTED})
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_anonymous_cannot_update_status_401(self, tenant_client, listing):
+        """Unauthenticated request to change status must be rejected."""
+        booking_id = self._create_booking(tenant_client[0], listing.id)
+        response = APIClient().patch(f'{BOOKINGS_URL}{booking_id}/status/', {'status': BookingStatus.CONFIRMED})
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_invalid_status_value_400(self, tenant_client, lessor_client, listing):
+        """A status outside the updatable set (e.g. reverting to pending) must be rejected."""
+        booking_id = self._create_booking(tenant_client[0], listing.id)
+        lessor, _ = lessor_client
+        response = lessor.patch(f'{BOOKINGS_URL}{booking_id}/status/', {'status': BookingStatus.PENDING})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_lessor_cannot_cancel_403(self, tenant_client, lessor_client, listing):
         """Lessor must not be able to cancel a booking; only the tenant can."""

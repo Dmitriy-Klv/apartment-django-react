@@ -129,26 +129,15 @@ export function PrivacyPolicyPage() {
           , after confirming your password. Deleting your account replaces your email and username with anonymized
           placeholders and signs you out everywhere — it does not remove bookings or reviews tied to your account,
           because those records are also linked to other users (a landlord or a fellow guest) who would otherwise
-          lose their own history. This mirrors how established booking platforms handle account deletion. As this is
-          a demo environment, its database may also be periodically reset for maintenance or testing, which removes
-          accounts and their associated content without individual notice.
+          lose their own history. This mirrors how established booking platforms handle account deletion. This is not
+          a full-fledged commercial service but a portfolio demonstration project, and its database — together with
+          your data — may be wiped or reset by the developer at any time, without prior notice, for testing,
+          maintenance, or any other reason.
         </p>
       </section>
 
       <section className="space-y-2">
-        <h2>10. Your rights</h2>
-        <p>Depending on your jurisdiction, you may have the right to:</p>
-        <ul>
-          <li>Access the personal data we hold about you</li>
-          <li>Request correction of inaccurate data</li>
-          <li>Request erasure of your data</li>
-          <li>Restrict or object to certain processing</li>
-          <li>Receive your data in a portable format</li>
-        </ul>
-      </section>
-
-      <section className="space-y-2">
-        <h2>11. Age requirement</h2>
+        <h2>10. Age requirement</h2>
         <p>
           This application is intended for users who are at least 16 years old, or the minimum age required for
           consent to data processing under applicable local law, whichever is higher.
@@ -156,7 +145,7 @@ export function PrivacyPolicyPage() {
       </section>
 
       <section className="space-y-2">
-        <h2>12. Changes to this policy</h2>
+        <h2>11. Changes to this policy</h2>
         <p>
           As this is an evolving portfolio project, this page may be updated as features change. The "last updated"
           date at the top reflects the most recent revision.

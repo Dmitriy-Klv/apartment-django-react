@@ -144,7 +144,6 @@ export function PrivacyPolicyPage() {
           <li>Request erasure of your data</li>
           <li>Restrict or object to certain processing</li>
           <li>Receive your data in a portable format</li>
-          <li>Lodge a complaint with a data protection supervisory authority</li>
         </ul>
       </section>
 

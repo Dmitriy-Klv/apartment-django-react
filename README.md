@@ -14,7 +14,6 @@
 ![React](https://img.shields.io/badge/react-19-61dafb)
 ![Tests](https://img.shields.io/badge/tests-220%20passing-success)
 ![Coverage](https://img.shields.io/badge/coverage-100%25-success)
-![Stack](https://img.shields.io/badge/dependencies-100%25%20free%20%26%20open%20source-informational)
 
 </div>
 

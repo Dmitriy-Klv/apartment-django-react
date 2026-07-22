@@ -14,7 +14,9 @@ RUN apk add --no-cache apache2-utils
 
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker/nginx-ratelimit.conf /etc/nginx/conf.d/00-ratelimit.conf
 COPY docker/nginx-basic-auth.sh /docker-entrypoint.d/40-basic-auth.sh
-RUN chmod +x /docker-entrypoint.d/40-basic-auth.sh
+COPY docker/nginx-https.sh /docker-entrypoint.d/50-https.sh
+RUN chmod +x /docker-entrypoint.d/40-basic-auth.sh /docker-entrypoint.d/50-https.sh
 
-EXPOSE 80
+EXPOSE 80 443

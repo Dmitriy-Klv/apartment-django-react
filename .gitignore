@@ -57,7 +57,6 @@ Thumbs.db
 # Local only
 journal/
 data/
-.claude/
 
 # Testing & coverage
 .coverage
@@ -83,4 +82,3 @@ docker-compose.override.yml
 *.bak
 *.orig
 Thumbs.db
-/README.md

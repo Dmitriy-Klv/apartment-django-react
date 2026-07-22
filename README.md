@@ -4,7 +4,7 @@
 
 **A full-stack apartment rental platform** — Django REST Framework + React
 
-*Listings, search & filtering, booking lifecycle, reviews, and history — built as a portfolio project with privacy-conscious design throughout.*
+*Listings, search & filtering, booking lifecycle, reviews, and history — built as a portfolio project.*
 
 <img src="frontend/src/assets/images/hero-villa.jpg" alt="SoftStay" width="720" />
 

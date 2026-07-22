@@ -118,6 +118,32 @@ class TestRegister:
         user = User.objects.get(email=tenant_payload['email'])
         assert user.password != tenant_payload['password']
 
+    def test_register_numeric_password_returns_400(self, api_client, tenant_payload):
+        """A fully numeric password must be rejected (NumericPasswordValidator)."""
+        tenant_payload['password'] = '12345678'
+        response = api_client.post(REGISTER_URL, tenant_payload)
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'password' in response.data
+
+    def test_register_common_password_returns_400(self, api_client, tenant_payload):
+        """A well-known common password must be rejected (CommonPasswordValidator)."""
+        tenant_payload['password'] = 'password123'
+        response = api_client.post(REGISTER_URL, tenant_payload)
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'password' in response.data
+
+    def test_register_password_similar_to_email_returns_400(self, api_client, tenant_payload):
+        """A password matching the account's own email must be rejected (UserAttributeSimilarityValidator)."""
+        tenant_payload['password'] = tenant_payload['email']
+        response = api_client.post(REGISTER_URL, tenant_payload)
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'password' in response.data
+
+    def test_register_valid_strong_password_still_succeeds(self, api_client, tenant_payload):
+        """A password that satisfies all validators must still register successfully (no regression)."""
+        response = api_client.post(REGISTER_URL, tenant_payload)
+        assert response.status_code == status.HTTP_201_CREATED
+
 
 @pytest.mark.django_db
 class TestLogin:

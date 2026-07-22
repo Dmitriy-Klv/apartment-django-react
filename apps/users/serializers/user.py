@@ -1,3 +1,5 @@
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
 from apps.users.models import User, UserRole
@@ -22,6 +24,15 @@ class RegisterSerializer(serializers.Serializer):
         if User.objects.filter(username=value).exists():
             raise serializers.ValidationError('Username already taken.')
         return value
+
+    def validate(self, attrs):
+        """Run Django's configured password validators against the full submission."""
+        temp_user = User(email=attrs.get('email'), username=attrs.get('username'))
+        try:
+            validate_password(attrs['password'], user=temp_user)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError({'password': list(exc.messages)}) from exc
+        return attrs
 
 
 class UserSerializer(serializers.ModelSerializer):

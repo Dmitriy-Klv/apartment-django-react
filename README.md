@@ -13,7 +13,6 @@
 ![Django](https://img.shields.io/badge/django-5-092e20)
 ![React](https://img.shields.io/badge/react-19-61dafb)
 ![Tests](https://img.shields.io/badge/tests-220%20passing-success)
-![Coverage](https://img.shields.io/badge/coverage-100%25-success)
 
 </div>
 

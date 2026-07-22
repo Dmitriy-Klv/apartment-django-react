@@ -19,6 +19,7 @@ server {
     server_name ${DOMAIN_NAME};
 
     location /.well-known/acme-challenge/ {
+        auth_basic off;
         root /var/www/certbot;
     }
 
@@ -92,6 +93,7 @@ server {
     server_name ${DOMAIN_NAME};
 
     location /.well-known/acme-challenge/ {
+        auth_basic off;
         root /var/www/certbot;
     }
 }

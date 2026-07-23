@@ -10,7 +10,7 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from apps.bookings.models import Booking, BookingStatus
+from apps.bookings.models import Booking, BookingStatus, RejectionReason
 from apps.bookings.services.booking import BookingService
 from apps.listings.models import Listing, PropertyType
 from apps.users.models import User, UserRole
@@ -243,7 +243,7 @@ class TestListingBookedDates:
         start, end = future_dates(start_offset=10)
         created = client.post(BOOKINGS_URL, {'listing': listing.id, 'start_date': start, 'end_date': end})
         lessor, _ = lessor_client
-        lessor.patch(f'{BOOKINGS_URL}{created.data["id"]}/status/', {'status': BookingStatus.REJECTED})
+        lessor.patch(f'{BOOKINGS_URL}{created.data["id"]}/status/', {'status': BookingStatus.REJECTED, 'rejection_reason': RejectionReason.DATES_UNAVAILABLE})
 
         response = APIClient().get(f'{BOOKINGS_URL}listings/{listing.id}/booked-dates/')
         assert results_of(response.data) == []
@@ -350,14 +350,76 @@ class TestBookingStatusUpdate:
         assert response.status_code == status.HTTP_200_OK
         assert response.data['status'] == BookingStatus.CONFIRMED
 
-    def test_lessor_rejects_pending_booking(self, tenant_client, lessor_client, listing):
-        """Listing owner must be able to reject a pending booking."""
+    def test_lessor_rejects_pending_booking_with_reason(self, tenant_client, lessor_client, listing):
+        """Listing owner must be able to reject a pending booking, providing a reason."""
+        tenant, _ = tenant_client
+        booking_id = self._create_booking(tenant, listing.id)
+        lessor, _ = lessor_client
+        response = lessor.patch(
+            f'{BOOKINGS_URL}{booking_id}/status/',
+            {'status': BookingStatus.REJECTED, 'rejection_reason': RejectionReason.DATES_UNAVAILABLE},
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['status'] == BookingStatus.REJECTED
+        assert response.data['rejection_reason'] == RejectionReason.DATES_UNAVAILABLE
+
+    def test_reject_without_reason_400(self, tenant_client, lessor_client, listing):
+        """Rejecting without a rejection_reason must be rejected."""
         tenant, _ = tenant_client
         booking_id = self._create_booking(tenant, listing.id)
         lessor, _ = lessor_client
         response = lessor.patch(f'{BOOKINGS_URL}{booking_id}/status/', {'status': BookingStatus.REJECTED})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_reject_with_invalid_reason_400(self, tenant_client, lessor_client, listing):
+        """Rejecting with a reason outside the fixed list must be rejected."""
+        tenant, _ = tenant_client
+        booking_id = self._create_booking(tenant, listing.id)
+        lessor, _ = lessor_client
+        response = lessor.patch(
+            f'{BOOKINGS_URL}{booking_id}/status/',
+            {'status': BookingStatus.REJECTED, 'rejection_reason': 'not_a_real_reason'},
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_reject_other_without_note_400(self, tenant_client, lessor_client, listing):
+        """Rejecting with reason 'other' but no rejection_note must be rejected."""
+        tenant, _ = tenant_client
+        booking_id = self._create_booking(tenant, listing.id)
+        lessor, _ = lessor_client
+        response = lessor.patch(
+            f'{BOOKINGS_URL}{booking_id}/status/',
+            {'status': BookingStatus.REJECTED, 'rejection_reason': RejectionReason.OTHER},
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_reject_other_with_note_succeeds(self, tenant_client, lessor_client, listing):
+        """Rejecting with reason 'other' and a note must succeed and echo both back."""
+        tenant, _ = tenant_client
+        booking_id = self._create_booking(tenant, listing.id)
+        lessor, _ = lessor_client
+        response = lessor.patch(
+            f'{BOOKINGS_URL}{booking_id}/status/',
+            {
+                'status': BookingStatus.REJECTED,
+                'rejection_reason': RejectionReason.OTHER,
+                'rejection_note': 'Owner is temporarily blocking this listing for family use.',
+            },
+        )
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['status'] == BookingStatus.REJECTED
+        assert response.data['rejection_reason'] == RejectionReason.OTHER
+        assert response.data['rejection_note'] == 'Owner is temporarily blocking this listing for family use.'
+
+    def test_confirm_with_rejection_reason_400(self, tenant_client, lessor_client, listing):
+        """rejection_reason must not be accepted for transitions other than reject."""
+        tenant, _ = tenant_client
+        booking_id = self._create_booking(tenant, listing.id)
+        lessor, _ = lessor_client
+        response = lessor.patch(
+            f'{BOOKINGS_URL}{booking_id}/status/',
+            {'status': BookingStatus.CONFIRMED, 'rejection_reason': RejectionReason.DATES_UNAVAILABLE},
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_tenant_cannot_confirm_403(self, tenant_client, listing):
         """Tenant must not be able to confirm their own booking."""
@@ -376,7 +438,10 @@ class TestBookingStatusUpdate:
         """A lessor who does not own the listing must not reject the booking."""
         booking_id = self._create_booking(tenant_client[0], listing.id)
         other_lessor, _ = lessor_client_2
-        response = other_lessor.patch(f'{BOOKINGS_URL}{booking_id}/status/', {'status': BookingStatus.REJECTED})
+        response = other_lessor.patch(
+            f'{BOOKINGS_URL}{booking_id}/status/',
+            {'status': BookingStatus.REJECTED, 'rejection_reason': RejectionReason.DATES_UNAVAILABLE},
+        )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_anonymous_cannot_update_status_401(self, tenant_client, listing):
@@ -430,7 +495,10 @@ class TestBookingStatusUpdate:
         booking_id = self._create_booking(tenant, listing.id)
         lessor, _ = lessor_client
         lessor.patch(f'{BOOKINGS_URL}{booking_id}/status/', {'status': BookingStatus.CONFIRMED})
-        response = lessor.patch(f'{BOOKINGS_URL}{booking_id}/status/', {'status': BookingStatus.REJECTED})
+        response = lessor.patch(
+            f'{BOOKINGS_URL}{booking_id}/status/',
+            {'status': BookingStatus.REJECTED, 'rejection_reason': RejectionReason.DATES_UNAVAILABLE},
+        )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_double_confirm_400(self, tenant_client, lessor_client, listing):
@@ -500,6 +568,21 @@ class TestBookingServiceUnit:
         _, other_lessor = lessor_client_2
         with pytest.raises(PermissionDenied):
             BookingService.confirm_booking(booking, other_lessor)
+
+    def test_reject_booking_saves_reason_and_note(self, tenant_client, lessor_client, listing):
+        """Service layer must persist the rejection reason and note on the booking."""
+        _, tenant = tenant_client
+        booking = Booking.objects.create(
+            listing=listing, tenant=tenant, start_date=date.today() + timedelta(days=5),
+            end_date=date.today() + timedelta(days=8),
+            price_per_night=listing.price, total_price=Decimal(listing.price) * 3,
+        )
+        _, lessor = lessor_client
+        BookingService.reject_booking(booking, lessor, RejectionReason.OTHER, 'Owner needs the place that week.')
+        booking.refresh_from_db()
+        assert booking.status == BookingStatus.REJECTED
+        assert booking.rejection_reason == RejectionReason.OTHER
+        assert booking.rejection_note == 'Owner needs the place that week.'
 
 
 @pytest.mark.django_db

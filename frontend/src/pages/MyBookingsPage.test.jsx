@@ -45,4 +45,17 @@ describe('MyBookingsPage', () => {
     expect(await screen.findByText('Sunny flat in Berlin')).toBeInTheDocument()
     expect(screen.getByText('€480.00 total (€120.00/night)')).toBeInTheDocument()
   })
+
+  it('shows the rejection reason and note for a rejected booking', async () => {
+    const rejectedBooking = {
+      ...BOOKING,
+      status: 'rejected',
+      rejection_reason: 'suspicious_request',
+      rejection_note: '',
+    }
+    getMyBookings.mockResolvedValue({ results: [rejectedBooking], count: 1, next: null, previous: null })
+    renderPage()
+
+    expect(await screen.findByText('Reason: Suspicious or invalid request')).toBeInTheDocument()
+  })
 })

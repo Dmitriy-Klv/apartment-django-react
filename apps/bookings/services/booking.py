@@ -66,14 +66,16 @@ class BookingService:
         return booking
 
     @staticmethod
-    def reject_booking(booking: Booking, user) -> Booking:
-        """Reject a pending booking; only the listing owner."""
+    def reject_booking(booking: Booking, user, reason: str, note: str = '') -> Booking:
+        """Reject a pending booking with a reason; only the listing owner."""
         BookingService._require_lessor(booking, user)
         if booking.status != BookingStatus.PENDING:
             raise ValidationError('Only a pending booking can be rejected.')
 
         booking.status = BookingStatus.REJECTED
-        booking.save(update_fields=['status', 'updated_at'])
+        booking.rejection_reason = reason
+        booking.rejection_note = note
+        booking.save(update_fields=['status', 'rejection_reason', 'rejection_note', 'updated_at'])
         return booking
 
     @staticmethod

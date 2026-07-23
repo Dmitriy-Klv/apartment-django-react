@@ -8,7 +8,7 @@ from django.core.files import File
 from django.core.management.base import BaseCommand
 from faker import Faker
 
-from apps.bookings.models import Booking, BookingStatus
+from apps.bookings.models import Booking, BookingStatus, RejectionReason
 from apps.history.services.search_history import SearchHistoryService
 from apps.history.services.view_history import ViewHistoryService
 from apps.listings.models import Listing, ListingPhoto, PropertyType
@@ -184,6 +184,13 @@ class Command(BaseCommand):
         for listing in listings:
             for start, end in self._generate_booking_windows(random.randint(1, 3)):
                 nights = (end - start).days
+                booking_status = self._weighted_status(is_past=end <= date.today())
+                rejection_reason = ''
+                rejection_note = ''
+                if booking_status == BookingStatus.REJECTED:
+                    rejection_reason = random.choice(list(RejectionReason))
+                    if rejection_reason == RejectionReason.OTHER:
+                        rejection_note = self.fake.sentence()
                 bookings.append(Booking.objects.create(
                     listing=listing,
                     tenant=random.choice(tenants),
@@ -191,7 +198,9 @@ class Command(BaseCommand):
                     end_date=end,
                     price_per_night=listing.price,
                     total_price=listing.price * nights,
-                    status=self._weighted_status(is_past=end <= date.today()),
+                    status=booking_status,
+                    rejection_reason=rejection_reason or None,
+                    rejection_note=rejection_note,
                 ))
         return bookings
 

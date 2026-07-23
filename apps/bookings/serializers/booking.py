@@ -2,7 +2,7 @@ from datetime import date
 
 from rest_framework import serializers
 
-from apps.bookings.models import Booking, BookingStatus
+from apps.bookings.models import Booking, BookingStatus, RejectionReason
 from apps.listings.models import Listing
 
 UPDATABLE_STATUSES = [
@@ -24,7 +24,7 @@ class BookingSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'listing', 'listing_title', 'tenant', 'tenant_email',
             'start_date', 'end_date', 'price_per_night', 'total_price',
-            'status', 'created_at', 'updated_at',
+            'status', 'rejection_reason', 'rejection_note', 'created_at', 'updated_at',
         ]
         read_only_fields = fields
 
@@ -63,3 +63,21 @@ class BookingStatusSerializer(serializers.Serializer):
     """Validate a booking status transition request."""
 
     status = serializers.ChoiceField(choices=UPDATABLE_STATUSES)
+    rejection_reason = serializers.ChoiceField(choices=RejectionReason.choices, required=False)
+    rejection_note = serializers.CharField(required=False, allow_blank=True, max_length=500)
+
+    def validate(self, attrs):
+        """Require a reason (and a note for 'other') only when rejecting a booking."""
+        status_value = attrs.get('status')
+        reason = attrs.get('rejection_reason')
+        note = attrs.get('rejection_note', '')
+
+        if status_value == BookingStatus.REJECTED:
+            if not reason:
+                raise serializers.ValidationError({'rejection_reason': 'A rejection reason is required.'})
+            if reason == RejectionReason.OTHER and not note.strip():
+                raise serializers.ValidationError({'rejection_note': 'Please specify a reason when selecting "Other".'})
+        elif reason or note:
+            raise serializers.ValidationError('rejection_reason/rejection_note only apply when rejecting a booking.')
+
+        return attrs

@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { extractApiError } from '@/lib/apiError'
 import { unwrapPage } from '@/lib/pagination'
+import { rejectionReasonLabel } from '@/lib/rejectionReason'
 
 function BookingRow({ booking }) {
   const queryClient = useQueryClient()
@@ -49,6 +50,13 @@ function BookingRow({ booking }) {
         </div>
         <StatusBadge status={booking.status} />
       </div>
+
+      {booking.status === 'rejected' && booking.rejection_reason && (
+        <p className="text-sm text-muted-foreground">
+          Reason: {rejectionReasonLabel(booking.rejection_reason)}
+          {booking.rejection_note && ` — ${booking.rejection_note}`}
+        </p>
+      )}
 
       <Banner variant="error">{error}</Banner>
 

@@ -128,8 +128,17 @@ class BookingStatusUpdateView(APIView):
         serializer = BookingStatusSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        action = STATUS_ACTIONS[serializer.validated_data['status']]
-        booking = action(booking, request.user)
+        status_value = serializer.validated_data['status']
+        action = STATUS_ACTIONS[status_value]
+        if status_value == BookingStatus.REJECTED:
+            booking = action(
+                booking,
+                request.user,
+                serializer.validated_data['rejection_reason'],
+                serializer.validated_data.get('rejection_note', ''),
+            )
+        else:
+            booking = action(booking, request.user)
         return Response(BookingSerializer(booking).data)
 
 

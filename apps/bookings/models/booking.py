@@ -13,6 +13,14 @@ class BookingStatus(models.TextChoices):
     CHECKED_IN = 'checked_in', 'Checked In'
 
 
+class RejectionReason(models.TextChoices):
+    DATES_UNAVAILABLE = 'dates_unavailable', 'Dates no longer available'
+    LISTING_UNAVAILABLE = 'listing_unavailable', 'Listing temporarily unavailable'
+    TENANT_REQUIREMENTS_NOT_MET = 'tenant_requirements_not_met', "Tenant doesn't meet requirements"
+    SUSPICIOUS_REQUEST = 'suspicious_request', 'Suspicious or invalid request'
+    OTHER = 'other', 'Other'
+
+
 class Booking(models.Model):
     listing = models.ForeignKey(
         'listings.Listing',
@@ -41,6 +49,13 @@ class Booking(models.Model):
         choices=BookingStatus.choices,
         default=BookingStatus.PENDING,
     )
+    rejection_reason = models.CharField(
+        max_length=30,
+        choices=RejectionReason.choices,
+        null=True,
+        blank=True,
+    )
+    rejection_note = models.CharField(max_length=500, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

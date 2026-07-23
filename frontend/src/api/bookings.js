@@ -25,7 +25,10 @@ export async function getListingBookedDates(listingId) {
   return response.data
 }
 
-export async function updateBookingStatus(id, status) {
-  const response = await apiClient.patch(`/bookings/${id}/status/`, { status })
+export async function updateBookingStatus(id, status, { rejectionReason, rejectionNote } = {}) {
+  const payload = { status }
+  if (rejectionReason) payload.rejection_reason = rejectionReason
+  if (rejectionNote) payload.rejection_note = rejectionNote
+  const response = await apiClient.patch(`/bookings/${id}/status/`, payload)
   return response.data
 }
